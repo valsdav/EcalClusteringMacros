@@ -33,7 +33,7 @@ bool usePFRechits_ = true;
 bool usePFCluster_ = true;
 bool useSuperCluster_ = false;
 
-int analyze_gen_reco(){
+int analyse_gen_reco(){
     TFile * f = new TFile ("RecoSimDumper.root");
     TTreeReader tree ("recosimdumper/caloTree", f);
     
@@ -64,9 +64,9 @@ int analyze_gen_reco(){
     // TTreeReaderValue<std::vector<float>> superCluster_phi(tree, "superCluster_phi");
     // TTreeReaderValue<std::map<int,int>>  map_simHit_pfCLuster(tree, "map_simHit_pfCLuster"); 
     // TTreeReaderValue<std::map<int,int>>  map_simHit_superCLuster(tree, "map_simHit_superCLuster");  
-
     TTreeReaderValue<std::vector<float>> caloHit_energy(tree,"caloHit_energy");       
     TTreeReaderValue<std::vector<float>> caloHit_time(tree,"caloHit_time");
+    
     
 
     /*  The first check if E_reco/ E gen true: 
@@ -79,47 +79,54 @@ int analyze_gen_reco(){
     TH1F* hreco_gen = new TH1F("reco_gen", "", 50, 0.6,1.1);
     TH1F* hsimhits_gen = new TH1F("simhits_gen", "", 100, 0.6,1.1);
 
-
+    TH1F* hsimhit_energy = new TH1F("simhit_energy", "", 300, 0 , 30);
     TH1F* pcalohit_energy = new TH1F("pcalohit_energy", "", 300, 0 , 30);
     TH1F* pcalohit_energy_zoom = new TH1F("pcalohit_energy_zoom", "", 100, 0 , 0.5);
     TH1F* pcalohit_time = new TH1F("pcalohit_time", "", 500, 0, 100);
 
     // pcalohit over genparticle energy
     map<pair<float, float>, TH1F*> hcalo_gen_histos;
-    hcalo_gen_histos[make_pair(0.000, 50)] = new TH1F("calo_gen_cut000MeV_50ns", "", 100, 0.6,1.1);
-    hcalo_gen_histos[make_pair(0.000, 100)] = new TH1F("calo_gen_cut000MeV_100ns", "", 100, 0.6,1.1);
-    hcalo_gen_histos[make_pair(0.020, 50)] = new TH1F("calo_gen_cut020MeV_50ns", "", 100, 0.6,1.1);
-    hcalo_gen_histos[make_pair(0.030, 50)] = new TH1F("calo_gen_cut030MeV_50ns", "", 100, 0.6,1.1);
-    hcalo_gen_histos[make_pair(0.050, 50)] = new TH1F("calo_gen_cut050MeV_50ns", "", 100, 0.6,1.1);
-    hcalo_gen_histos[make_pair(0.100, 50)] = new TH1F("calo_gen_cut100MeV_50ns", "", 100, 0.6,1.1);
-    hcalo_gen_histos[make_pair(0.200, 50)] = new TH1F("calo_gen_cut200MeV_50ns", "", 100, 0.6,1.1);
+    hcalo_gen_histos[make_pair(0.0001, 50)] = new TH1F("calo_gen_cut_100KeV_50ns", "", 100, 0.75,1.01);
+    hcalo_gen_histos[make_pair(0.0005, 50)] = new TH1F("calo_gen_cut_500KeV_50ns", "", 100, 0.75,1.01);
+    hcalo_gen_histos[make_pair(0.001, 50)] = new TH1F("calo_gen_cut_1MeV_50ns", "", 100, 0.75,1.01);
+    hcalo_gen_histos[make_pair(0.005, 50)] = new TH1F("calo_gen_cut_5MeV_50ns", "", 100, 0.75,1.01);
+    hcalo_gen_histos[make_pair(0.010, 50)] = new TH1F("calo_gen_cut_10MeV_50ns", "", 100, 0.75,1.01);
+    hcalo_gen_histos[make_pair(0.100, 50)] = new TH1F("calo_gen_cut_100MeV_50ns", "", 100, 0.75,1.01);
     // for timing cuts
-    hcalo_gen_histos[make_pair(0.000, 30)] = new TH1F("calo_gen_cut000MeV_30ns", "", 100, 0.6,1.1);
-    hcalo_gen_histos[make_pair(0.000, 20)] = new TH1F("calo_gen_cut000MeV_20ns", "", 100, 0.6,1.1);
-    hcalo_gen_histos[make_pair(0.000, 15)] = new TH1F("calo_gen_cut000MeV_15ns", "", 100, 0.6,1.1);
-    hcalo_gen_histos[make_pair(0.000, 10)] = new TH1F("calo_gen_cut000MeV_10ns", "", 100, 0.6,1.1);
-    hcalo_gen_histos[make_pair(0.000, 5)]  = new TH1F("calo_gen_cut000MeV_5ns" , "", 100, 0.6,1.1);
+    hcalo_gen_histos[make_pair(0.000, 50)] = new TH1F("calo_gen_cut_0KeV_50ns", "", 100, 0.75,1.01);
+    hcalo_gen_histos[make_pair(0.000, 30)] = new TH1F("calo_gen_cut_0KeV_30ns", "", 100, 0.75,1.01);
+    hcalo_gen_histos[make_pair(0.000, 20)] = new TH1F("calo_gen_cut_0KeV_20ns", "", 100, 0.75,1.01);
+    hcalo_gen_histos[make_pair(0.000, 15)] = new TH1F("calo_gen_cut_0KeV_15ns", "", 100, 0.75,1.01);
+    hcalo_gen_histos[make_pair(0.000, 10)] = new TH1F("calo_gen_cut_0KeV_10ns", "", 100, 0.75,1.01);
+    hcalo_gen_histos[make_pair(0.000, 5)]  = new TH1F("calo_gen_cut_0KeV_5ns" , "", 100, 0.75,1.01);
 
     // pcalohit over simhit total
     map<pair<float, float>, TH1F*> hcalo_simhit_histos;
-    hcalo_simhit_histos[make_pair(0.000, 50)] = new TH1F("calo_simhit_cut000MeV_50ns", "", 100, 0.6,1.1);
-    hcalo_simhit_histos[make_pair(0.000, 100)] = new TH1F("calo_simhit_cut000MeV_100ns", "", 100, 0.6,1.1);
-    hcalo_simhit_histos[make_pair(0.020, 50)] = new TH1F("calo_simhit_cut020MeV_50ns", "", 100, 0.6,1.1);
-    hcalo_simhit_histos[make_pair(0.030, 50)] = new TH1F("calo_simhit_cut030MeV_50ns", "", 100, 0.6,1.1);
-    hcalo_simhit_histos[make_pair(0.050, 50)] = new TH1F("calo_simhit_cut050MeV_50ns", "", 100, 0.6,1.1);
-    hcalo_simhit_histos[make_pair(0.100, 50)] = new TH1F("calo_simhit_cut100MeV_50ns", "", 100, 0.6,1.1);
-    hcalo_simhit_histos[make_pair(0.200, 50)] = new TH1F("calo_simhit_cut200MeV_50ns", "", 100, 0.6,1.1);
+    hcalo_simhit_histos[make_pair(0.0001, 50)] = new TH1F("calo_simhit_cut_100KeV_50ns", "", 100, 0.75,1.01);
+    hcalo_simhit_histos[make_pair(0.0005, 50)] = new TH1F("calo_simhit_cut_500KeV_50ns", "", 100, 0.75,1.01);
+    hcalo_simhit_histos[make_pair(0.001, 50)] = new TH1F("calo_simhit_cut_1MeV_50ns", "", 100, 0.75,1.01);
+    hcalo_simhit_histos[make_pair(0.005, 50)] = new TH1F("calo_simhit_cut_5MeV_50ns", "", 100, 0.75,1.01);
+    hcalo_simhit_histos[make_pair(0.010, 50)] = new TH1F("calo_simhit_cut_10MeV_50ns", "", 100, 0.75,1.01);
+    hcalo_simhit_histos[make_pair(0.100, 50)] = new TH1F("calo_simhit_cut_100MeV_50ns", "", 100, 0.75,1.01);
     // for timing cuts
-    hcalo_simhit_histos[make_pair(0.000, 30)] = new TH1F("calo_simhit_cut000MeV_30ns", "", 100, 0.6,1.1);
-    hcalo_simhit_histos[make_pair(0.000, 20)] = new TH1F("calo_simhit_cut000MeV_20ns", "", 100, 0.6,1.1);
-    hcalo_simhit_histos[make_pair(0.000, 15)] = new TH1F("calo_simhit_cut000MeV_15ns", "", 100, 0.6,1.1);
-    hcalo_simhit_histos[make_pair(0.000, 10)] = new TH1F("calo_simhit_cut000MeV_10ns", "", 100, 0.6,1.1);
-    hcalo_simhit_histos[make_pair(0.000, 5)]  = new TH1F("calo_simhit_cut000MeV_5ns" , "", 100, 0.6,1.1);
+    hcalo_simhit_histos[make_pair(0.000, 50)] = new TH1F("calo_simhit_cut_0KeV_50ns", "", 100, 0.75,1.01);
+    hcalo_simhit_histos[make_pair(0.000, 30)] = new TH1F("calo_simhit_cut_0KeV_30ns", "", 100, 0.75,1.01);
+    hcalo_simhit_histos[make_pair(0.000, 20)] = new TH1F("calo_simhit_cut_0KeV_20ns", "", 100, 0.75,1.01);
+    hcalo_simhit_histos[make_pair(0.000, 15)] = new TH1F("calo_simhit_cut_0KeV_15ns", "", 100, 0.75,1.01);
+    hcalo_simhit_histos[make_pair(0.000, 10)] = new TH1F("calo_simhit_cut_0KeV_10ns", "", 100, 0.75,1.01);
+    hcalo_simhit_histos[make_pair(0.000, 5)]  = new TH1F("calo_simhit_cut_0KeV_5ns" , "", 100, 0.75,1.01);
+
+
+    // Simhit over genparticle energy
+    map<float, TH1F*> hsimhit_gen_histos;
+    hsimhit_gen_histos[0.0001] = new TH1F("simhit_gen_cut_100KeV", "", 100, 0.8,1.01);
+    hsimhit_gen_histos[0.001] = new TH1F("simhit_gen_cut_1MeV", "", 100, 0.8,1.01);
+    hsimhit_gen_histos[0.01] = new TH1F("simhit_gen_cut_10MeV", "", 100, 0.8,1.01);
+    hsimhit_gen_histos[0.1] = new TH1F("simhit_gen_cut_100MeV", "", 100, 0.8,1.01);
 
 
     while(tree.Next()){
-        //cout << "Event"<<endl;
-        // Reco- gentrue check
+        // PfCluster - gentrue energy ratio
         for (int icl =0; icl < pfCluster_eta->size(); icl++){
             double dR = deltaR(*genParticle_eta, *genParticle_phi, pfCluster_eta->at(icl), pfCluster_phi->at(icl));
             //cout  << "dR " << dR << " energy "<< pfCluster_energy->at(icl)<< endl;
@@ -130,6 +137,7 @@ int analyze_gen_reco(){
 
         float tot_simhit_energy = 0.;
         for (auto & se : *simHit_energy){
+            hsimhit_energy->Fill(se);
             tot_simhit_energy += se;
         }
         hsimhits_gen->Fill(tot_simhit_energy / *genParticle_energy);
@@ -163,6 +171,18 @@ int analyze_gen_reco(){
                 }
             }
             histo->Fill(tot_energy_cut / tot_simhit_energy);
+        }
+
+        // Simhit over genparticle with cuts
+        for (auto const& [cut, histo] : hsimhit_gen_histos){
+            float tot_energy_cut = 0.;
+            for (int ich=0; ich< simHit_energy->size(); ich++){
+                //cout << "caloHit energy: "<< caloHit_energy->at(ich) << " | time: "<< caloHit_time->at(ich) <<endl;
+                if (simHit_energy->at(ich) > cut){
+                    tot_energy_cut+= simHit_energy->at(ich);
+                }
+            }
+            histo->Fill(tot_energy_cut / *genParticle_energy);
         }
         
     }
