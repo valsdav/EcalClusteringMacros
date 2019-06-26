@@ -76,10 +76,12 @@ int analyse_gen_reco(){
     //TCanvas * c1 = new TCanvas("c1");
     //TCanvas * c2 = new TCanvas("c2");
     TFile* outputfile = new TFile("output.root", "RECREATE");
+    TH1F* hgen_energy = new TH1F("gen_energy", "GenParticle energy", 60, 0, 100);
     TH1F* hreco_gen = new TH1F("reco_gen", "", 50, 0.6,1.1);
     TH1F* hsimhits_gen = new TH1F("simhits_gen", "", 100, 0.6,1.1);
 
     TH1F* hsimhit_energy = new TH1F("simhit_energy", "", 300, 0 , 30);
+    TH1F* hsimhit_energy_zoom = new TH1F("simhit_energy_zoom", "", 100, 0 , 0.01);
     TH1F* pcalohit_energy = new TH1F("pcalohit_energy", "", 300, 0 , 30);
     TH1F* pcalohit_energy_zoom = new TH1F("pcalohit_energy_zoom", "", 100, 0 , 0.5);
     TH1F* pcalohit_time = new TH1F("pcalohit_time", "", 500, 0, 100);
@@ -119,6 +121,7 @@ int analyse_gen_reco(){
 
     // Simhit over genparticle energy
     map<float, TH1F*> hsimhit_gen_histos;
+    hsimhit_gen_histos[0.000] = new TH1F("simhit_gen_cut_0KeV", "", 100, 0.8,1.01);
     hsimhit_gen_histos[0.0001] = new TH1F("simhit_gen_cut_100KeV", "", 100, 0.8,1.01);
     hsimhit_gen_histos[0.001] = new TH1F("simhit_gen_cut_1MeV", "", 100, 0.8,1.01);
     hsimhit_gen_histos[0.01] = new TH1F("simhit_gen_cut_10MeV", "", 100, 0.8,1.01);
@@ -126,6 +129,7 @@ int analyse_gen_reco(){
 
 
     while(tree.Next()){
+        hgen_energy->Fill(*genParticle_energy);
         // PfCluster - gentrue energy ratio
         for (int icl =0; icl < pfCluster_eta->size(); icl++){
             double dR = deltaR(*genParticle_eta, *genParticle_phi, pfCluster_eta->at(icl), pfCluster_phi->at(icl));
@@ -138,6 +142,7 @@ int analyse_gen_reco(){
         float tot_simhit_energy = 0.;
         for (auto & se : *simHit_energy){
             hsimhit_energy->Fill(se);
+            hsimhit_energy_zoom->Fill(se);
             tot_simhit_energy += se;
         }
         hsimhits_gen->Fill(tot_simhit_energy / *genParticle_energy);

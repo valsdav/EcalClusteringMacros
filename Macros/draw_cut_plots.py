@@ -12,7 +12,7 @@ cuts_en = ["cut_100KeV_50ns","cut_500KeV_50ns", "cut_1MeV_50ns", "cut_5MeV_50ns"
             "cut_10MeV_50ns","cut_100MeV_50ns"]
 cuts_time = [ "cut_0KeV_50ns", "cut_0KeV_30ns","cut_0KeV_20ns","cut_0KeV_15ns",
                "cut_0KeV_10ns", "cut_0KeV_5ns" ]
-simhit_cuts = ["cut_100KeV", "cut_1MeV", "cut_10MeV", "cut_100MeV"]
+simhit_cuts = ["cut_0KeV","cut_100KeV", "cut_1MeV", "cut_10MeV", "cut_100MeV"]
 
 histos = []
 canvas = []
@@ -28,6 +28,7 @@ canvas = []
 7. Simhits / GenParticle energy
 8. SimHit energy spectrum
 9. Simhit / GenParticle energy (energy cut)
+10. GenParticle energy spectrum
 
 '''
 
@@ -50,6 +51,7 @@ if 1 in args.plots:
     h.SetTitle("PCaloHit timing")
     histos.append(h)
     h.SetLineWidth(2)
+    h.GetXaxis().SetTitle("Time [ns]")
     h.Draw("HIST PLC")
     c_calotime.SetLogy()
     c_calotime.Draw()
@@ -59,6 +61,7 @@ if 2 in args.plots:
     c_caloenergy = R.TCanvas("c_caloenergy")
     h = file.Get("pcalohit_energy")
     h.SetTitle("PCaloHit energy")
+    h.GetXaxis().SetTitle("Energy [GeV]")
     histos.append(h)
     h.SetLineWidth(2)
     h.Draw("HIST PLC")
@@ -69,6 +72,7 @@ if 2 in args.plots:
     c_caloenergy_zoom = R.TCanvas("c_caloenergy_zoom")
     h = file.Get("pcalohit_energy_zoom")
     h.SetTitle("PCaloHit energy")
+    h.GetXaxis().SetTitle("Energy [GeV]")
     histos.append(h)
     h.SetLineWidth(2)
     h.Draw("HIST PLC")
@@ -163,15 +167,56 @@ if 7 in args.plots:
     canvas.append(c_simhitgen)
 
 if 8 in args.plots:
-    c_simhiten = R.TCanvas("c_simhitem")
+    c_simhiten = R.TCanvas("c_simhiten")
     h = file.Get("simhit_energy")
     h.SetTitle("Simhits energy")
+    h.GetXaxis().SetTitle("Energy [GeV]")
     histos.append(h)
     h.SetLineWidth(2)
     h.Draw("HIST PLC")
     c_simhiten.SetLogy()
     c_simhiten.Draw()
     canvas.append(c_simhiten)
+
+    c_simhiten_cumul = R.TCanvas("c_simhiten_cumul")
+    h = file.Get("simhit_energy")
+    h.Scale(1/h.Integral())
+    h2 = h.GetCumulative(False)
+    h2.SetTitle("SimHit energy > E")
+    histos.append(h2)
+    h2.SetLineWidth(2)
+    h2.Draw("HIST PLC")
+    c_simhiten_cumul.SetLogy()
+    c_simhiten_cumul.Draw()
+    canvas.append(c_simhiten_cumul)
+
+
+    c_simhiten_zoom = R.TCanvas("c_simhiten_zoom")
+    h = file.Get("simhit_energy_zoom")
+    h.SetTitle("Simhits energy")
+    h.GetXaxis().SetTitle("Energy [GeV]")
+    histos.append(h)
+    h.SetLineWidth(2)
+    h.Draw("HIST PLC")
+    c_simhiten_zoom.SetLogy()
+    c_simhiten_zoom.Draw()
+    canvas.append(c_simhiten_zoom)
+
+    c_simhiten_cumul_zoom = R.TCanvas("c_simhiten_cumul_zoom")
+    h = file.Get("simhit_energy_zoom")
+    bins = h.GetNbinsX()
+    h.SetBinContent(bins, h.GetBinContent(bins)+ h.GetBinContent(bins+1))
+    h.Scale(1/h.Integral())
+    h3 = h.GetCumulative(False)
+    h3.SetTitle("SimHit energy > E")
+    histos.append(h3)
+    h3.SetLineWidth(2)
+    h3.Draw("HIST PLC")
+    c_simhiten_cumul.SetLogy()
+    c_simhiten_cumul_zoom.Draw()
+    canvas.append(c_simhiten_cumul_zoom)
+
+
 
 
 if 9 in args.plots:
@@ -192,6 +237,19 @@ if 9 in args.plots:
     leg9.Draw("same")
     c_simhit_cut.Draw()
     canvas.append(c_simhit_cut)
+
+
+if 10 in args.plots:
+    c_genenergy = R.TCanvas("c_genenergy")
+    h = file.Get("gen_energy")
+    h.GetXaxis().SetTitle("Energy [GeV]")
+    histos.append(h)
+    h.SetLineWidth(2)
+    h.Draw("HIST PLC")
+    c_genenergy.SetLogy()
+    c_genenergy.Draw()
+    canvas.append(c_genenergy)
+
 
 
 for c in canvas:
