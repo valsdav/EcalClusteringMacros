@@ -47,15 +47,24 @@ if 0 in args.plots:
 
 if 1 in args.plots:
     c_calotime = R.TCanvas("c_calotime")
+    legt = R.TLegend(0.5, 0.5, 0.85,0.7)
     h = file.Get("pcalohit_time")
+    h2 = file.Get("pcalohit_time_encut")
     h.SetTitle("PCaloHit timing")
+    legt.AddEntry(h, "PCaloHit time - no cut")
+    legt.AddEntry(h2, "PCaloHit time - > 1 MeV")
     histos.append(h)
+    histos.append(h2)
     h.SetLineWidth(2)
+    h2.SetLineWidth(2)
     h.GetXaxis().SetTitle("Time [ns]")
     h.Draw("HIST PLC")
+    h2.Draw("HIST PLC SAME")
+    legt.Draw("same")
     c_calotime.SetLogy()
     c_calotime.Draw()
     canvas.append(c_calotime)
+
 
 if 2 in args.plots:
     c_caloenergy = R.TCanvas("c_caloenergy")
@@ -178,18 +187,6 @@ if 8 in args.plots:
     c_simhiten.Draw()
     canvas.append(c_simhiten)
 
-    c_simhiten_cumul = R.TCanvas("c_simhiten_cumul")
-    h = file.Get("simhit_energy")
-    h.Scale(1/h.Integral())
-    h2 = h.GetCumulative(False)
-    h2.SetTitle("SimHit energy > E")
-    histos.append(h2)
-    h2.SetLineWidth(2)
-    h2.Draw("HIST PLC")
-    c_simhiten_cumul.SetLogy()
-    c_simhiten_cumul.Draw()
-    canvas.append(c_simhiten_cumul)
-
 
     c_simhiten_zoom = R.TCanvas("c_simhiten_zoom")
     h = file.Get("simhit_energy_zoom")
@@ -201,23 +198,6 @@ if 8 in args.plots:
     c_simhiten_zoom.SetLogy()
     c_simhiten_zoom.Draw()
     canvas.append(c_simhiten_zoom)
-
-    c_simhiten_cumul_zoom = R.TCanvas("c_simhiten_cumul_zoom")
-    h = file.Get("simhit_energy_zoom")
-    bins = h.GetNbinsX()
-    h.SetBinContent(bins, h.GetBinContent(bins)+ h.GetBinContent(bins+1))
-    h.Scale(1/h.Integral())
-    h3 = h.GetCumulative(False)
-    h3.SetTitle("SimHit energy > E")
-    histos.append(h3)
-    h3.SetLineWidth(2)
-    h3.Draw("HIST PLC")
-    c_simhiten_cumul.SetLogy()
-    c_simhiten_cumul_zoom.Draw()
-    canvas.append(c_simhiten_cumul_zoom)
-
-
-
 
 if 9 in args.plots:
     histos9 = []
@@ -249,6 +229,67 @@ if 10 in args.plots:
     c_genenergy.SetLogy()
     c_genenergy.Draw()
     canvas.append(c_genenergy)
+
+if 11 in args.plots:
+    # c_simhiten_cumul = R.TCanvas("c_simhiten_cumul")
+    # h = file.Get("simhit_energy")
+    # bins = h.GetNbinsX()
+    # h.SetBinContent(bins, h.GetBinContent(bins)+ h.GetBinContent(bins+1))
+    # h.Scale(1/h.Integral())
+    # h2 = h.GetCumulative(False)
+    # h2.SetTitle("SimHit energy > E")
+    # h2.GetXaxis().SetTitle("Energy [GeV]")
+    # histos.append(h2)
+    # h2.SetLineWidth(2)
+    # h2.Draw("HIST PLC")
+    # c_simhiten_cumul.SetLogy()
+    # c_simhiten_cumul.Draw()
+    # canvas.append(c_simhiten_cumul)
+
+    # c_simhiten_cumul_2 = R.TCanvas("c_simhiten_cumul_2")
+    # h = file.Get("simhit_energy")
+    # bins = h.GetNbinsX()
+    # h.SetBinContent(bins, h.GetBinContent(bins)+ h.GetBinContent(bins+1))
+    # h.Scale(1/h.Integral())
+    # h2 = h.GetCumulative(True)
+    # h2.SetTitle("SimHit energy < E")
+    # histos.append(h2)
+    # h2.SetLineWidth(2)
+    # h2.GetXaxis().SetTitle("Energy [GeV]")
+    # h2.Draw("HIST PLC")
+    # #c_simhiten_cumul_2.SetLogy()
+    # c_simhiten_cumul_2.Draw()
+    # canvas.append(c_simhiten_cumul_2)
+
+    c_simhiten_cumul_zoom = R.TCanvas("c_simhiten_cumul_zoom")
+    hsimhit_energy_zoom = file.Get("simhit_energy_zoom")
+    bins = hsimhit_energy_zoom.GetNbinsX()
+    hsimhit_energy_zoom.SetBinContent(bins, 
+                hsimhit_energy_zoom.GetBinContent(bins)+ hsimhit_energy_zoom.GetBinContent(bins+1))
+    hsimhit_energy_zoom.SetBinContent(bins+1, 0)
+    hsimhit_energy_zoom.Scale(1/hsimhit_energy_zoom.Integral())
+    histos.append(hsimhit_energy_zoom)
+    h3 = hsimhit_energy_zoom.GetCumulative(False)
+    print(h3.GetBinContent(h3.FindBin(0.001)))
+    h3.SetTitle("SimHit energy > E")
+    h3.GetXaxis().SetTitle("Energy [GeV]")
+    histos.append(h3)
+    h3.SetLineWidth(2)
+    h3.Draw("HIST PLC")
+    c_simhiten_cumul_zoom.Draw()
+    canvas.append(c_simhiten_cumul_zoom)
+
+    c_simhiten_cumul_zoom2 = R.TCanvas("c_simhiten_cumul_zoom2")
+    h3 = hsimhit_energy_zoom.GetCumulative(True)
+    print(h3.GetBinContent(h3.FindBin(0.001)))
+    h3.SetTitle("SimHit energy < E")
+    h3.GetXaxis().SetTitle("Energy [GeV]")
+    histos.append(h3)
+    h3.SetLineWidth(2)
+    h3.Draw("HIST PLC")
+    #c_simhiten_cumul.SetLogy()
+    c_simhiten_cumul_zoom2.Draw()
+    canvas.append(c_simhiten_cumul_zoom2)
 
 
 

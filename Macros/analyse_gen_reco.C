@@ -81,10 +81,11 @@ int analyse_gen_reco(){
     TH1F* hsimhits_gen = new TH1F("simhits_gen", "", 100, 0.6,1.1);
 
     TH1F* hsimhit_energy = new TH1F("simhit_energy", "", 300, 0 , 30);
-    TH1F* hsimhit_energy_zoom = new TH1F("simhit_energy_zoom", "", 100, 0 , 0.01);
+    TH1F* hsimhit_energy_zoom = new TH1F("simhit_energy_zoom", "", 500, 0 , 0.01);
     TH1F* pcalohit_energy = new TH1F("pcalohit_energy", "", 300, 0 , 30);
     TH1F* pcalohit_energy_zoom = new TH1F("pcalohit_energy_zoom", "", 100, 0 , 0.5);
-    TH1F* pcalohit_time = new TH1F("pcalohit_time", "", 500, 0, 100);
+    TH1F* pcalohit_time = new TH1F("pcalohit_time", "", 300, 0, 60);
+    TH1F* pcalohit_time_encut = new TH1F("pcalohit_time_encut", "", 300, 0, 60);
 
     // pcalohit over genparticle energy
     map<pair<float, float>, TH1F*> hcalo_gen_histos;
@@ -152,6 +153,9 @@ int analyse_gen_reco(){
                 pcalohit_energy->Fill(caloHit_energy->at(ich));
                 pcalohit_energy_zoom->Fill(caloHit_energy->at(ich));
                 pcalohit_time->Fill(caloHit_time->at(ich));
+                if (caloHit_energy->at(ich) > 0.001){
+                    pcalohit_time_encut->Fill(caloHit_time->at(ich));
+                }
         }
 
         // PCalo hit  over genparticle energy
