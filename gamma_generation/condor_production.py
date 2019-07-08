@@ -4,6 +4,9 @@ import argparse
 import random
 from math import *
 
+with open("command.txt", "w") as of:
+    of.write(" ".join(["python"]+sys.argv))
+
 '''
 This scripts runs hadd on single crystal files to 
 group them in strips reading a DOF file
@@ -18,6 +21,7 @@ parser.add_argument("-o", "--outputdir", type=str, help="Outputdir", required=Tr
 parser.add_argument("-c", "--cmssw", type=str, help="CMSSW tar", required=True)
 parser.add_argument("-q", "--queue", type=str, help="Condor queue", default="longlunch", required=True)
 parser.add_argument("-e", "--eos", type=str, default="user", help="EOS instance user/cms", required=False)
+parser.add_argument("--redo", action="store_true", default=False, help="Redo all files")
 args = parser.parse_args()
 
 
@@ -40,12 +44,12 @@ script = '''#!/bin/sh -e
 export X509_USER_PROXY=/afs/cern.ch/user/{user1}/{user}/.proxy
 voms-proxy-info
 
-cp -r  {cmssw_loc} .
-tar zxf {cmssw_file}.tar.gz {cmssw_file}
+cp -r {cmssw_loc} .
 cd {cmssw_file}/src
 
 echo -e "evaluate"
 eval `scramv1 ru -sh`
+export HOME='/afs/cern.ch/user/{user1}/{user}'
 
 JOBID=$1; shift; 
 OUTPUTFILE=$1;
@@ -61,12 +65,19 @@ SEED4=${10}
 
 cd RecoSimStudies/Dumpers/test
 
-echo -e "cmsRun.."
+echo -e "cmsRun..";
+echo -e ">>> STEP1";
 cmsRun step1_CloseEcal_cfi_GEN_SIM.py jobid=$JOBID  maxEvents=$NEVENTS \
-    emin=$EMIN emax=$EMAX zmin=$ZMIN zmax=$ZMAX
+    emin=$EMIN emax=$EMAX zmin=$ZMIN zmax=$ZMAX;
 
+echo -e ">>> STEP2";
 cmsRun step2_DIGI_L1_DIGI2RAW_HLT.py
+xrdcp --nopbar step2.root root://eos{eosinstance}.cern.ch/${OUTPUTFILE}_step2.root;
+
+echo -e ">>> STEP3";
 cmsRun step3_RAW2DIGI_L1Reco_RECO_RECOSIM_EI_PAT_VALIDATION_DQM.py
+
+xrdcp --nopbar step3.root root://eos{eosinstance}.cern.ch/${OUTPUTFILE}_step3.root;
 
 echo -e "Running dumper.."
 
@@ -75,7 +86,7 @@ cmsRun python/RecoSimDumper_cfg.py inputFile=test/step3.root outputFile=output_$
 
 
 echo -e "Copying result to: $OUTPUTFILE";
-xrdcp --nopbar  output_${JOBID}.root root://eos{eosinstance}.cern.ch/${OUTPUTFILE};
+xrdcp --nopbar  output_${JOBID}.root root://eos{eosinstance}.cern.ch/${OUTPUTFILE}.root;
 
 echo -e "DONE";
 '''
@@ -91,6 +102,8 @@ arguments= []
 if not os.path.exists(args.outputdir):
     os.makedirs(args.outputdir)
 
+outpufiles = os.listdir(args.outputdir)
+
 def getZ(eta):
     R = 130
     st = 1 / cosh(eta)
@@ -103,7 +116,9 @@ for en in args.energy:
         print("Eta: {} | Z: {}".format(eta, z))
 
         jobid +=1
-        outputfile = args.outputdir + "cluster_{:.1f}_{:.1f}.root".format(en,eta)
+        outputfile = args.outputdir + "/cluster_{:.1f}_{:.1f}".format(en,eta)
+        if args.redo and outfile in outputfiles:
+            continue
         arguments.append("{} {} {} {} {} {} {} {} {} {} {}".format(
             jobid,outputfile,args.nevents, en-0.0001,en+0.0001,z-0.0001,z+0.0001,
             random.randint(1,10000),random.randint(1,10000),
