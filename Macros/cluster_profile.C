@@ -62,30 +62,57 @@ int cluster_profile(char* inputfile){
     // TTreeReaderValue<std::map<int,int>>  map_simHit_superCLuster(tree, "map_simHit_superCLuster");  
 
     
-    TH2F * cluster_map = new TH2F("cluster_map", "cluster_energy", 170, -85,-85, 360, 0, 360);  
+    TH2F * cluster_map = new TH2F("cluster_map", "cluster_energy", 170, -85,+85, 360, 0, 360);  
 
-    TH1F* rechitEnergy = new TH1F("rechit_energy", "rechit_energy", 100, 0, 30);
-    TH1F* pfRechitEnergy = new TH1F("pfRechit_energy", "pfRechit_energy", 100, 0, 30);
+    TH1F* rechitEnergy = new TH1F("rechit_energy", "rechit_energy", 300, 0, 50);
+    TH1F* pfRechitEnergy = new TH1F("pfRechit_energy", "pfRechit_energy", 300, 0, 50);
+
+
+    TH2F* cprof = new TH2F("cprofile", "pfCluster profile",21,-10.5,+10.5,21,-10.5,+10.5);
 
     vector<int> Nrechits; 
 
     while(tree.Next()){
-        Nrechits.push_back(count_if(recHit_energy->begin(), recHit_energy->end(), [](float f){return f>0;}));
+
+        //Nrechits.push_back(count_if(recHit_energy->begin(), recHit_energy->end(), [](float f){return f>0;}));
+        float maxhit_ieta = -1;
+        float maxhit_iphi = -1;
+        float maxhit_energy = -1;
 
         for (int is =0; is < simHit_ieta->size() ; is++){
 
             rechitEnergy->Fill(recHit_energy->at(is));
+            bool isMatched = false;
             if (pfRecHit_isMatched->at(is)){
+                isMatched= true;
                 pfRechitEnergy->Fill(recHit_energy->at(is));
             }
 
             if (pfClusterHit_energy->at(is) >0){
                 cluster_map->Fill(simHit_ieta->at(is), simHit_iphi->at(is));
+
+                if (pfClusterHit_energy->at(is) > maxhit_energy){
+                    maxhit_energy = pfClusterHit_energy->at(is);
+                    maxhit_ieta = simHit_ieta->at(is);
+                    maxhit_iphi = simHit_iphi->at(is);
+                }
             }
         }
+
+        cout << maxhit_energy << " " <<maxhit_ieta << " " << maxhit_iphi <<endl;
+        for (int is =0; is < simHit_ieta->size() ; is++){
+            if (pfClusterHit_energy->at(is)>0){
+                cprof->Fill(simHit_ieta->at(is)- maxhit_ieta, 
+                            simHit_iphi->at(is)-maxhit_iphi, 
+                            pfClusterHit_energy->at(is));
+            }
+        }
+
         
     }
 
+    cout << "Fitting"<<endl;
+    cprof->Fit("bigaus");
     //cout << "N_rechits mean:" << std::accumulate(Nrechits.begin(), Nrechits.end(), 0.0) / Nrechits.size() << endl;
 
     TCanvas *c1 = new TCanvas("c1", "", 800, 600);
@@ -98,6 +125,10 @@ int cluster_profile(char* inputfile){
     pfRechitEnergy->SetLineColor(kRed);
     c2->SetLogy();
     c2->Draw();
+
+    TCanvas *c3= new TCanvas("c3", "", 800,800);
+    cprof->Draw("Lego");
+    c3->Draw();
 
     return 0;
 
