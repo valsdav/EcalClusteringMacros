@@ -20,17 +20,14 @@
 #include <TProfile.h>   
 #include <TF2.h>
 #include <TStyle.h>
+#include "stdlib.h"
 
 
 using  namespace std;
 
 
-
-int cluster_profile(char* inputfile){
-    TH1::SetDefaultSumw2();
-    gStyle->SetOptFit(1111);
-
-    TFile * f = new TFile (inputfile);
+pair<float, float> getSigma(string inputfile){
+    TFile * f = new TFile (inputfile.c_str());
     TTreeReader tree ("recosimdumper/caloTree", f);
     
     TTreeReaderValue<UInt_t> genParticle_id (tree,"genParticle_id");
@@ -62,57 +59,27 @@ int cluster_profile(char* inputfile){
     TTreeReaderValue<std::map<int,int>>  map_simHit_pfCLuster(tree, "map_simHit_pfCluster"); 
     // TTreeReaderValue<std::map<int,int>>  map_simHit_superCLuster(tree, "map_simHit_superCLuster");  
 
-    
-    TH2F * cluster_map_EB = new TH2F("cluster_map_EB", "cluster_energy_EB", 170, -85,+85, 360, 0, 360); 
-    TH2F * cluster_map_EE = new TH2F("cluster_map_EE", "cluster_energy_EE", 100, 0, 100, 100, 0, 100);   
 
-    TH1F* rechitEnergy_EB = new TH1F("rechit_energyEB", "rechit_energy EB", 300, 0, 50);
-    TH1F* rechitEnergy_EE = new TH1F("rechit_energyEE", "rechit_energy EE", 300, 0, 50);
-
-    TH1F* pfRechitEnergy_EB = new TH1F("pfRechit_energyEB", "pfRechit_energy EB", 300, 0, 50);
-    TH1F* pfRechitEnergy_EE = new TH1F("pfRechit_energyEE", "pfRechit_energy EE", 300, 0, 50);
-
-    TH2F* cprof = new TH2F("cprofile", "pfCluster profile",9,-4.5,+4.5,9,-4.5,+4.5);
+    TH2F* cprof = new TH2F("cprofile", "pfCluster profile",19,-9.5,+9.5,19,-9.5,+9.5);
 
     vector<int> Nrechits; 
 
     int Npfclusters = 0;
 
     while(tree.Next()){
+        cout << "========" <<endl;
         //Nrechits.push_back(count_if(recHit_energy->begin(), recHit_energy->end(), [](float f){return f>0;}));
         float maxhit_ieta = -1;
         float maxhit_iphi = -1;
         float maxhit_energy = -1;
 
-        bool hasPfCluster = false;
-
         for (int is =0; is < simHit_ieta->size() ; is++){
-            
-            if (recHit_energy->at(is)>0){
-                if (simHit_iz->at(is) == 0){
-                    rechitEnergy_EB->Fill(recHit_energy->at(is));
-                    if (pfRecHit_isMatched->at(is)){
-                        pfRechitEnergy_EB->Fill(recHit_energy->at(is));
-                    }
-                    if(pfClusterHit_energy->at(is)>0){
-                        cluster_map_EB->Fill(simHit_ieta->at(is), simHit_iphi->at(is));
-                    }
-                }else{
-                    rechitEnergy_EE->Fill(recHit_energy->at(is));
-                    
-                    if (pfRecHit_isMatched->at(is)){
-                        pfRechitEnergy_EE->Fill(recHit_energy->at(is));
-                    }
-                    if(pfClusterHit_energy->at(is)>0){
-                        cluster_map_EE->Fill(simHit_ieta->at(is), simHit_iphi->at(is));
-                    }
-                }              
-            }
 
             if (pfClusterHit_energy->at(is) >0){
-                hasPfCluster = true;
-                if (pfRecHit_isMatched->at(is) && recHit_energy->at(is) > maxhit_energy){
-                    maxhit_energy = recHit_energy->at(is);
+                cout << pfClusterHit_energy->at(is) << endl;
+                Npfclusters+=1;
+                if (pfClusterHit_energy->at(is) > maxhit_energy){
+                    maxhit_energy = pfClusterHit_energy->at(is);
                     maxhit_ieta = simHit_ieta->at(is);
                     maxhit_iphi = simHit_iphi->at(is);
                 }
@@ -122,14 +89,14 @@ int cluster_profile(char* inputfile){
 
         //cout << maxhit_energy << " " <<maxhit_ieta << " " << maxhit_iphi <<endl;
         for (int is =0; is < simHit_ieta->size() ; is++){
-            if (pfClusterHit_energy->at(is)>0 && pfRecHit_isMatched->at(is)){
+            if (pfClusterHit_energy->at(is)>0){
                 cprof->Fill(simHit_ieta->at(is)- maxhit_ieta, 
                             simHit_iphi->at(is)- maxhit_iphi, 
-                            recHit_energy->at(is));
+                            pfClusterHit_energy->at(is));
             }
         }
 
-        if (hasPfCluster) Npfclusters+=1;
+
 
         
     }
@@ -143,39 +110,35 @@ int cluster_profile(char* inputfile){
     }
 
     cout << "Fitting"<<endl;
-    auto f2 = new TF2("bigaus","bigaus",-4.5,4.5,-4.5,4.5);
-    cprof->Fit("bigaus");
+    auto f2 = new TF2("bigaus","bigaus",-9.5,9.5,-9.5,9.5);
+    cprof->Fit("bigaus", "N");
 
-    TCanvas *c3= new TCanvas("c3", "", 800,800);
-    cprof->Draw("LEGO");
-    c3->Draw();
-    //cout << "N_rechits mean:" << std::accumulate(Nrechits.begin(), Nrechits.end(), 0.0) / Nrechits.size() << endl;
+    f->Close();
+    return make_pair(f2->GetParameter("SigmaX"), f2->GetParameter("SigmaY"));
 
-    TCanvas *c1 = new TCanvas("c1", "", 800, 600);
-    cluster_map_EB->Draw("COLZ");
-    c1->Draw();
-
-    // TCanvas *c1b = new TCanvas("c1b", "", 800, 600);
-    // cluster_map_EE->Draw("COLZ");
-    // c1b->Draw();
-
-    TCanvas *c2 = new TCanvas("c2", "", 800, 600);
-    rechitEnergy_EB->Draw("hist");
-    pfRechitEnergy_EB->Draw("hist same");
-    pfRechitEnergy_EB->SetLineColor(kRed);
-    cout << "EB rechits: " << rechitEnergy_EB->Integral() << " pf EB rechits: " << pfRechitEnergy_EB->Integral() << endl;
-    c2->SetLogy();
-    c2->Draw();
-
-    TCanvas *c4 = new TCanvas("c4", "", 800, 600);
-    rechitEnergy_EE->Draw("hist");
-    pfRechitEnergy_EE->Draw("hist same");
-    pfRechitEnergy_EE->SetLineColor(kRed);
-    c4->SetLogy();
-    c4->Draw();
+}
 
 
+
+int cluster_profile_all(string inputdir){
+    TH1::SetDefaultSumw2();
+    gStyle->SetOptFit(1111);
+
+    vector<string> etas = {"0.2", "0.5", "1", "1.2", "1.8", "2.5"}; 
+    vector<string> energies = {"5", "10", "30", "50", "100"};
+
+    map<pair<string,string>,pair<float,float>> sigmas;
+
+    for (auto const & eta: etas){
+        for (auto const & en: energies){
+            char * file = "/cluster_en%s_eta%s.root";
+            auto ss = getSigma(inputdir + to_string(sprintf(file, en.c_str(), eta.c_str() )));
+            sigmas[make_pair(eta,en)] = ss;
+            cout << "En: " << en <<" eta: "<< eta<< " Sigma_ieta: " << 
+                ss.first << " Sigma_iphi: " << ss.second << endl;
+        }
+    }
+  
 
     return 0;
-
 }
