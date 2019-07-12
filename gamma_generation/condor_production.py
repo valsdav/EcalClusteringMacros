@@ -58,21 +58,24 @@ EMIN=$3
 EMAX=$4
 ZMIN=$5
 ZMAX=$6
-SEED1=$7
-SEED2=$8
-SEED3=$9
-SEED4=${10}
+RMIN=$7
+RMAX=$8
+SEED1=$9
+SEED2=${10}
+SEED3=${11}
+SEED4=${12}
 
 cd RecoSimStudies/Dumpers/test
 
 echo -e "cmsRun..";
 echo -e ">>> STEP1";
 cmsRun step1_CloseEcal_cfi_GEN_SIM.py jobid=$JOBID  maxEvents=$NEVENTS \
-    emin=$EMIN emax=$EMAX zmin=$ZMIN zmax=$ZMAX;
+    emin=$EMIN emax=$EMAX zmin=$ZMIN zmax=$ZMAX rmin=$RMIN rmax=$RMAX;
 
 echo -e ">>> STEP2";
 cmsRun step2_DIGI_L1_DIGI2RAW_HLT.py
-xrdcp --nopbar step2.root root://eos{eosinstance}.cern.ch/${OUTPUTFILE}_step2.root;
+ 
+#xrdcp --nopbar step2.root root://eos{eosinstance}.cern.ch/${OUTPUTFILE}_step2.root;
 
 echo -e ">>> STEP3";
 cmsRun step3_RAW2DIGI_L1Reco_RECO_RECOSIM_EI_PAT_VALIDATION_DQM.py
@@ -102,25 +105,35 @@ arguments= []
 if not os.path.exists(args.outputdir):
     os.makedirs(args.outputdir)
 
-outpufiles = os.listdir(args.outputdir)
+outputfiles = [args.outputdir +"/"+f for f in os.listdir(args.outputdir)]
 
-def getZ(eta):
-    R = 130
+
+# distance measured in cm
+def getR_Z(eta):
     st = 1 / cosh(eta)
-    return (R * sqrt(1- st**2)) / st
+    if eta < 1.4790:
+        R = 129
+        Z = (R * sqrt(1- st**2)) / st
+
+    else:
+        Z = 317
+        R = (Z * st)/ sqrt(1- st**2)
+    return R, Z
 
 jobid = 0
 for en in args.energy:
     for eta in args.eta:
-        z = getZ(eta)
-        print("Eta: {} | Z: {}".format(eta, z))
+        R,Z = getR_Z(eta)
+        print("Eta: {} | R: {} | Z: {}".format(eta,R,Z))
 
         jobid +=1
-        outputfile = args.outputdir + "/cluster_{:.1f}_{:.1f}".format(en,eta)
-        if args.redo and outfile in outputfiles:
+        outputfile = args.outputdir + "/cluster_en{:.1f}_eta{:.1f}".format(en,eta)
+    
+        if not args.redo and outputfile+".root" in outputfiles:
             continue
-        arguments.append("{} {} {} {} {} {} {} {} {} {} {}".format(
-            jobid,outputfile,args.nevents, en-0.0001,en+0.0001,z-0.0001,z+0.0001,
+        arguments.append("{} {} {} {} {} {} {} {} {} {} {} {} {}".format(
+            jobid,outputfile,args.nevents, en-0.0001,en+0.0001,
+            Z-0.0001,Z+0.0001,R-0.0001, R+0.0001,
             random.randint(1,10000),random.randint(1,10000),
             random.randint(1,10000),random.randint(1,10000)))
 

@@ -6,7 +6,7 @@ R.TH1.SetDefaultSumw2()
 R.gStyle.SetOptFit(1111)
 
 
-f = R.TFile("cluster_en30.0_eta1.0_bis.root");
+f = R.TFile(sys.argv[1]);
 tree = f.Get("recosimdumper/caloTree")
 Npfclusters = 0 
 
