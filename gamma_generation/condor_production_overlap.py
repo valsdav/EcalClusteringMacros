@@ -16,6 +16,8 @@ parser = argparse.ArgumentParser()
 #parser.add_argument("-f", "--files", type=str, help="input file", required=True)
 parser.add_argument("--energy", type=float,nargs='+', help="energies", required=True)
 parser.add_argument("--eta", type=float,nargs='+', help="etas", required=True)
+parser.add_argument("--energy2range", type=float,nargs='+', help="energies 2nd particle", required=True)
+parser.add_argument("--delta", type=float, help="delta in cm", required=True)
 parser.add_argument("-n", "--nevents", type=int, help="n events", required=True)
 parser.add_argument("-o", "--outputdir", type=str, help="Outputdir", required=True)
 parser.add_argument("-c", "--cmssw", type=str, help="CMSSW tar", required=True)
@@ -64,13 +66,18 @@ SEED1=$9
 SEED2=${10}
 SEED3=${11}
 SEED4=${12}
+DR=${13}
+DPHI=${14}
+DZ=${15}
+EFIX=${16}
 
 cd RecoSimStudies/Dumpers/test
 
 echo -e "cmsRun..";
 echo -e ">>> STEP1";
-cmsRun step1_CloseEcal_cfi_GEN_SIM.py jobid=$JOBID  maxEvents=$NEVENTS \
-    emin=$EMIN emax=$EMAX zmin=$ZMIN zmax=$ZMAX rmin=$RMIN rmax=$RMAX;
+cmsRun step1_CloseEcal_Overlap_cfi_GEN_SIM.py jobid=$JOBID  maxEvents=$NEVENTS \
+    emin=$EMIN emax=$EMAX zmin=$ZMIN zmax=$ZMAX rmin=$RMIN rmax=$RMAX \
+    deltaR=$DR deltaPhi=$DPHI deltaZ=$DZ efix=$EFIX;
 
 echo -e ">>> STEP2";
 cmsRun step2_DIGI_L1_DIGI2RAW_HLT.py
@@ -121,22 +128,37 @@ def getR_Z(eta):
         R = (Z * st)/ sqrt(1- st**2)
     return R, Z
 
+def getVariation(eta, delta):
+    dR, dZ, dPhi = 0.,0.,0.
+    R,Z = getR_Z(eta)
+    dPhi = delta / R
+    if eta < 1.4790 :
+        # barrel
+        dZ = delta
+    else:
+        # endcap
+        dR = delta
+
+    return dR, dZ, dPhi
+
+
 jobid = 0
 for en in args.energy:
     for eta in args.eta:
         R,Z = getR_Z(eta)
-        print("Eta: {} | R: {} | Z: {}".format(eta,R,Z))
+        dR, dZ, dPhi = getVariation(eta, args.delta)
+        print("Eta: {} | R: {} | Z: {} | deltaR: {} | deltaPhi: {} | deltaZ: {}".format(eta,R,Z, dR, dPhi, dZ))
 
         jobid +=1
-        outputfile = args.outputdir + "/cluster_en{:.1f}_eta{:.1f}".format(en,eta)
+        outputfile = args.outputdir + "/cluster_en{:.1f}_eta{:.1f}_dR{:.2f}_dPhi{:.2f}_dZ{:.2f}".format(en,eta, dR, dPhi, dZ)
     
         if not args.redo and outputfile+".root" in outputfiles:
             continue
-        arguments.append("{} {} {} {} {} {} {} {} {} {} {} {} {}".format(
-            jobid,outputfile,args.nevents, en-0.0001,en+0.0001,
+        arguments.append("{} {} {} {} {} {} {} {} {} {} {} {} {} {:.2f} {:.2f} {:.2f} {}".format(
+            jobid,outputfile,args.nevents, args.energy2range[0],args.energy2range[1],
             Z-0.0001,Z+0.0001,R-0.0001, R+0.0001,
             random.randint(1,10000),random.randint(1,10000),
-            random.randint(1,10000),random.randint(1,10000)))
+            random.randint(1,10000),random.randint(1,10000), dR, dPhi, dZ, en ))
 
 print("Njobs: ", len(arguments))
     

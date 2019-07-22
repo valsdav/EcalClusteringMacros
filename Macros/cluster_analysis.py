@@ -1,5 +1,6 @@
 import ROOT as R 
 import sys 
+from tqdm import tqdm
 from collections import defaultdict
 
 R.TH1.SetDefaultSumw2()
@@ -14,32 +15,43 @@ cprof = R.TH2F("cprofile", "pfCluster profile",7,-3.5,3.5,7,-3.5,3.5);
 
 Npfclusters = 0
 
+pbar = tqdm(total=tree.GetEntries())
+
 for event in tree:
-    hasPfCluster = False
-    maxhit_ieta = -999
-    maxhit_iphi = -999
-    maxhit_energy = -1
-
-    for ieta,iphi,clusterhit, rechit, rechit_ismatched in zip(event.simHit_ieta,
-        event.simHit_iphi, event.pfClusterHit_energy, 
-        event.recHit_energy, event.pfRecHit_isMatched):
-
-        if (clusterhit>0 and rechit_ismatched):
-            hasPfCluster = True
-            if (rechit > maxhit_energy):
-                maxhit_ieta = ieta 
-                maxhit_iphi = iphi 
-                maxhit_energy = rechit
-        
-    if hasPfCluster: Npfclusters+=1
+    pbar.update()
+    ncalo = event.caloParticle_pt.size()
     
-    for ieta,iphi,clusterhit, rechit, rechit_ismatched in zip(event.simHit_ieta,
-        event.simHit_iphi, event.pfClusterHit_energy, 
-        event.recHit_energy, event.pfRecHit_isMatched):
-        if (clusterhit>0 and rechit_ismatched):
-            cprof.Fill(ieta-maxhit_ieta, iphi-maxhit_iphi, rechit)
+    for icalo in range(ncalo):
 
-# end of loop on enets
+        hasPfCluster = False
+        maxhit_ieta = -999
+        maxhit_iphi = -999
+        maxhit_energy = -1
+        
+        # print("----")
+        # for id, npfcluster in event.map_simHit_pfCluster[icalo]:
+        #     if (npfcluster != -1):
+        #         print(id, npfcluster)
+
+        for ieta,iphi,clusterhit, rechit, rechit_ismatched in zip(event.simHit_ieta[icalo],
+            event.simHit_iphi[icalo], event.pfClusterHit_energy[icalo], 
+            event.recHit_energy[icalo], event.pfRecHit_isMatched[icalo]):
+            
+            if (clusterhit>0 and rechit_ismatched):
+                hasPfCluster = True
+                if (rechit > maxhit_energy):
+                    maxhit_ieta = ieta 
+                    maxhit_iphi = iphi 
+                    maxhit_energy = rechit
+            
+        if hasPfCluster: Npfclusters+=1
+        
+        for ieta,iphi,clusterhit, rechit, rechit_ismatched in zip(event.simHit_ieta[icalo],
+            event.simHit_iphi[icalo], event.pfClusterHit_energy[icalo], 
+            event.recHit_energy[icalo], event.pfRecHit_isMatched[icalo]):
+            if (clusterhit>0 and rechit_ismatched):
+                cprof.Fill(ieta-maxhit_ieta, iphi-maxhit_iphi, rechit)
+
 
 print("Tot pfClusters: ", Npfclusters)
 #print(hits)
@@ -67,5 +79,5 @@ c1= R.TCanvas("c3", "", 800,800);
 cprof.Draw("LEGO");
 c1.Draw();
 
-
+pbar.close()
 
