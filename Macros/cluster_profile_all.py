@@ -15,7 +15,7 @@ R.gStyle.SetOptFit(1111)
 tdrstyle.setTDRStyle()
 #CMS_lumi.lumiText = "Train: {}, eta ring interval: {}".format(train, ring.replace("_","-"))
 CMS_lumi.lumiText = ""
-CMS_lumi.extraText="Simulation Preliminary"
+CMS_lumi.extraText="   Simulation Preliminary"
 
 def getSigma(inputfile, en,eta, ofile, outputdir):
 
@@ -39,8 +39,9 @@ def getSigma(inputfile, en,eta, ofile, outputdir):
     for event in tree:
         pbar.update()
         ncalo = event.caloParticle_pt.size()
+        #print("...............................................")
         for icalo in range(ncalo):  
-            hit_cluster_map = event.map_simHit_pfCluster[icalo]
+            #print("----")
             hasPfCluster = False
             maxhit_ieta = -999
             maxhit_iphi = -999
@@ -48,15 +49,19 @@ def getSigma(inputfile, en,eta, ofile, outputdir):
             clusters_N = []
             ihit = -1
 
-            for ieta,iphi,clusterhit, rechit, rechit_ismatched in zip(event.simHit_ieta[icalo],
-                event.simHit_iphi[icalo], event.pfClusterHit_energy[icalo], 
-                event.recHit_energy[icalo], event.pfRecHit_isMatched[icalo]):
+            for ieta,iphi,clusterhits in zip(event.simHit_ieta[icalo],
+                event.simHit_iphi[icalo], event.pfClusterHit_energy[icalo]):
                 ihit += 1
 
-                if (clusterhit>0 and rechit_ismatched):
+                if clusterhits.size() >= 1:
                     hasPfCluster = True
-                    cluster_n = hit_cluster_map[ihit]
-                    if cluster_n not in clusters_N: clusters_N.append(cluster_n)
+                    rechit = 0.
+                    for clhit in clusterhits:
+                        #print(ieta, iphi, clhit.first, clhit.second )
+                        # there should be only 1 cluster since we are not overlapping them
+                        cluster_n = clhit.first
+                        if cluster_n not in clusters_N: clusters_N.append(cluster_n)
+                        rechit += clhit.second
                     if (rechit > maxhit_energy):
                         maxhit_ieta = ieta 
                         maxhit_iphi = iphi 
@@ -64,10 +69,16 @@ def getSigma(inputfile, en,eta, ofile, outputdir):
                 
             if hasPfCluster: Npfclusters+=1
             
-            for ieta,iphi,clusterhit, rechit, rechit_ismatched in zip(event.simHit_ieta[icalo],
-                event.simHit_iphi[icalo], event.pfClusterHit_energy[icalo], 
-                event.recHit_energy[icalo], event.pfRecHit_isMatched[icalo]):
-                if (clusterhit>0 and rechit_ismatched):
+            for ieta,iphi,clusterhits in zip(event.simHit_ieta[icalo],
+                event.simHit_iphi[icalo], event.pfClusterHit_energy[icalo]):
+
+                if clusterhits.size() >= 1:
+                    rechit = 0.
+                    for clhit in clusterhits:
+                        # there should be only 1 cluster since we are not overlapping them
+                        cluster_n = clhit.first
+                        if cluster_n not in clusters_N: clusters_N.append(cluster_n)
+                        rechit += clhit.second
                     cprof.Fill(ieta-maxhit_ieta, iphi-maxhit_iphi, rechit)
 
             # Adding the rechits of noise for each pfCluster associated to the caloparticle
@@ -76,7 +87,7 @@ def getSigma(inputfile, en,eta, ofile, outputdir):
                                 event.pfClusterHit_noCaloPart_iphi[nc], 
                                 event.pfClusterHit_noCaloPart_energy[nc]):
                     cprof.Fill(ieta-maxhit_ieta, iphi-maxhit_iphi, ien)
-                    #print(ieta, iphi, ien)
+                    print(ieta, iphi, ien)
         
 
     pbar.close()
@@ -126,18 +137,27 @@ def getSigma(inputfile, en,eta, ofile, outputdir):
         
     ofile.cd()
     cprof.Write()
-    CMS_lumi.lumiText = "{} GeV - eta {:.1f}".format(en,eta)
 
-    c = R.TCanvas("c_en{}_et{}".format(en, eta), "", 800, 800)
+    label = R.TPaveText(0.75, 0.75, 0.95, 0.8, "NB NDC" )
+    text = label.AddText("{} GeV - eta {:.1f}".format(en,eta))
+    text.SetLineColor(R.kBlack)
+    label.SetFillColor(R.kWhite)
+   
+
+    c = R.TCanvas("c_en{}_et{}".format(en, eta), "", 900, 800)
+    c.SetRightMargin(0.2)
     cprof.Draw("COLZ")
     cprof.SetTitle("Energy: {}, eta: {}".format(en,eta))
     cprof.GetZaxis().SetTitle("Mean Energy (GeV)")
     cprof.GetXaxis().SetTitle("ieta/ix")
     cprof.GetYaxis().SetTitle("iphi/iy")
-    c.SetRightMargin(2.5)
     c.Update()
+    CMS_lumi.lumiText = "{} GeV - eta {:.1f}".format(en,eta)
     CMS_lumi.CMS_lumi(c, 0, 0)
     c.SaveAs(outputdir+"/c_en{}_et{}.png".format(en, eta))
+    c.SaveAs(outputdir+"/c_en{}_et{}.C".format(en, eta))
+
+    CMS_lumi.lumiText = ""
 
     c2x = R.TCanvas("cprojx_en{}_et{}".format(en, eta), "", 800, 800)
     xproj.Fit("gausx", "WL")
@@ -145,6 +165,7 @@ def getSigma(inputfile, en,eta, ofile, outputdir):
     c2x.SetLogy()
     c2x.Update()
     CMS_lumi.CMS_lumi(c2x, 0, 0)
+    label.Draw("same")
     c2x.SaveAs(outputdir+"/cprojx_en{}_et{}.png".format(en, eta))
 
     c2y = R.TCanvas("cprojy_en{}_et{}".format(en, eta), "", 800, 800)
@@ -152,7 +173,8 @@ def getSigma(inputfile, en,eta, ofile, outputdir):
     yproj.Draw()
     c2y.SetLogy()
     c2y.Update()
-    CMS_lumi.CMS_lumi(c2x, 0, 0)
+    label.Draw("same")
+    CMS_lumi.CMS_lumi(c2y, 0, 0)
     c2y.SaveAs(outputdir+"/cprojy_en{}_et{}.png".format(en, eta))
        
     return gx.GetParameter("Sigma"), gy.GetParameter("Sigma"), xproj.GetRMS(), yproj.GetRMS()
@@ -160,10 +182,10 @@ def getSigma(inputfile, en,eta, ofile, outputdir):
 
 if __name__ == "__main__":
 
-    etas = [0.2,0.5, 1, 1.2, 1.8, 2.5]
+    etas = [0.2,0.5, 1, 1.2, 1.8]
     ens = [5, 10, 30,50,75, 100]
-    #etas = [2.5]
-    #ens = [50]
+    #etas = [1.2]
+    #ens = [5]
 
     results= {} 
     results_rms = {}
