@@ -1,14 +1,15 @@
 import ROOT as R 
 import sys 
+import os
 from tqdm import tqdm
 from collections import defaultdict
 from math import cosh
 from itertools import islice, chain
 from numpy import mean
 from operator import itemgetter, attrgetter
-from pprint import pprint
 from array import array
 from math import sqrt
+import argparse
 R.TH1.SetDefaultSumw2()
 R.gStyle.SetOptFit(1111)
 R.gStyle.SetOptStat(0)
@@ -17,20 +18,33 @@ R.gStyle.SetOptStat(0)
 This script analyse the overlapping of two caloparticles
 '''
 
-debug = False
+parser = argparse.ArgumentParser()
+parser.add_argument("--energy", type=float, help="energy gamma1", required=True)
+parser.add_argument("--eta", type=float, help="eta gamma1", required=True)
+parser.add_argument("--maxR", type=float, help="maxR plot", required=True)
+parser.add_argument("--inputfile", type=str, help="inputfile", required=True)
+parser.add_argument("--outputdir", type=str, help="outputdir", required=True)
+parser.add_argument("--nevents", type=int,nargs="+", help="n events iterator", required=False)
+parser.add_argument("--debug", type=bool,  help="debug", default=False)
+args = parser.parse_args()
+
+debug = args.debug
+
+if not os.path.exists(args.outputdir):
+    os.makedirs(args.outputdir)
 
 
-f = R.TFile(sys.argv[1]);
+f = R.TFile(args.inputfile);
 tree = f.Get("recosimdumper/caloTree")
 
 pbar = tqdm(total=tree.GetEntries())
 
-calo1_en = float(sys.argv[2])
+calo1_en = args.energy
 
-if len(sys.argv)>3:
-    nevent = int(sys.argv[3])
-    if len(sys.argv) > 4:
-        nevent2 = int(sys.argv[4])
+if args.nevents and len(args.nevents) >= 1:
+    nevent = args.nevents[0]
+    if len(args.nevents) == 2:
+        nevent2 = args.nevents[1]
     else:
         nevent2 = nevent+1
     tree = islice(tree, nevent, nevent2)
@@ -49,10 +63,12 @@ hgamma1_dR   = R.TH1F("gamma1#DeltaR", "#DeltaR #gamma1 (PF - true)", 30, 0,0.03
 hgamma12_dEta = R.TH1F("gamma12#DeltaEta", "#Delta#eta PF #gamma1-2", 50, -1,1)
 hgamma12_dPhi = R.TH1F("gamma12#DeltaPhi", "#Delta#phi PF #gamma1-2", 50, -1,1)
 hgamma12_dR   = R.TH1F("gamma12#DeltaR", "#DeltaR PF #gamma1-2", 30, 0,0.1)
-hscan_Egamma1 = R.TProfile2D("scan_Egamma1", "En PF #gamma1 - E true #gamma1",25, 0.5, 50, 50, 0, 0.1)
-hscan_Egamma2 = R.TProfile2D("scan_Egamma2", "En PF #gamma2 - E true #gamma2",25, 0.5, 50, 50, 0, 0.1)
-hbadevent_dR    = R.TH1F("hbadevent_dR", "#DeltaR #gamma1-2 bad enents",  30, 0,0.1)
+hscan_Egamma1 = R.TProfile2D("scan_Egamma1", "En PF #gamma1 - E true #gamma1",25, 0.5, 50, 25, 0, args.maxR)
+hscan_Egamma2 = R.TProfile2D("scan_Egamma2", "En PF #gamma2 - E true #gamma2",25, 0.5, 50, 25, 0, args.maxR)
+hbadevent_dR    = R.TH1F("hbadevent_dR", "#DeltaR #gamma1-2 bad enents",  30, 0,args.maxR)
 nbadevents = {"noPfClusters":0, "noGamma1Cluster": 0, "noGamma2Cluster":0}
+
+
 
 def DeltaR(phi1, eta1, phi2, eta2):
         dphi = phi1 - phi2
@@ -200,43 +216,87 @@ for iev, event in enumerate(tree):
     hscan_Egamma2.Fill(calo_simE[gamma2],deltaR_clusters, cluster_energies[gamma2] - calo_simE[gamma2] )
 
 
-c1 = R.TCanvas("c1")
+c1 = R.TCanvas("c1", "", 800, 600)
 hgamma1_Eratio.Draw("hist")
+hgamma1_Eratio.GetXaxis().SetTitle("Epf /Ecalo")
 c1.Draw()  
-c2 = R.TCanvas("c2")
-hgamma2_Eratio.Draw("hist")
-c2.Draw()    
+c1.SaveAs(args.outputdir+ "/Gamma1_Eratio_E{:.1f}_eta{:.1f}.png".format(args.energy, args.eta))
+c1.SaveAs(args.outputdir+ "/Gamma1_Eratio_E{:.1f}_eta{:.1f}.C".format(args.energy, args.eta))
 
-c3 = R.TCanvas("c3")
+
+c2 = R.TCanvas("c2", "", 800, 600)
+hgamma2_Eratio.Draw("hist")
+hgamma2_Eratio.GetXaxis().SetTitle("Epf /Ecalo")
+c2.Draw()
+c2.SaveAs(args.outputdir+ "/Gamma2_Eratio_E{:.1f}_eta{:.1f}.png".format(args.energy, args.eta))
+c2.SaveAs(args.outputdir+ "/Gamma2_Eratio_E{:.1f}_eta{:.1f}.C".format(args.energy, args.eta))
+
+c3 = R.TCanvas("c3", "", 800, 600)
 hgamma1_dEta.Draw("hist")
+hgamma1_dEta.GetXaxis().SetTitle("#Delta#eta")
+c3.SaveAs(args.outputdir+ "/Gamma1_dEta_E{:.1f}_eta{:.1f}.png".format(args.energy, args.eta))
+c3.SaveAs(args.outputdir+ "/Gamma1_dEta_E{:.1f}_eta{:.1f}.C".format(args.energy, args.eta))
 c3.Draw()  
-c4 = R.TCanvas("c4")
+
+c4 = R.TCanvas("c4", "", 800, 600)
 hgamma1_dPhi.Draw("hist")
+hgamma1_dPhi.GetXaxis().SetTitle("#Delta#phi")
+c4.SaveAs(args.outputdir+ "/Gamma1_dPhi_E{:.1f}_eta{:.1f}.png".format(args.energy, args.eta))
+c4.SaveAs(args.outputdir+ "/Gamma1_dPhi_E{:.1f}_eta{:.1f}.C".format(args.energy, args.eta))
 c4.Draw()  
-c5 = R.TCanvas("c5")
+
+c5 = R.TCanvas("c5", "", 800, 600)
 hgamma1_dR.Draw("hist")
+hgamma1_dR.GetXaxis().SetTitle("#DeltaR")
+c5.SaveAs(args.outputdir+ "/Gamma1_dR_E{:.1f}_eta{:.1f}.png".format(args.energy, args.eta))
+c5.SaveAs(args.outputdir+ "/Gamma1_dR_E{:.1f}_eta{:.1f}.C".format(args.energy, args.eta))
 c5.Draw()  
 
-c8 = R.TCanvas("c8")
+c8 = R.TCanvas("c8", "", 800, 600)
 hgamma12_dEta.Draw("hist")
+hgamma12_dEta.GetXaxis().SetTitle("#Delta#eta")
+c8.SaveAs(args.outputdir+ "/Gamma1-2_dEta_E{:.1f}_eta{:.1f}.png".format(args.energy, args.eta))
+c8.SaveAs(args.outputdir+ "/Gamma1-2_dEta_E{:.1f}_eta{:.1f}.C".format(args.energy, args.eta))
 c8.Draw()  
-c9 = R.TCanvas("c9")
+
+c9 = R.TCanvas("c9", "", 800, 600)
 hgamma12_dPhi.Draw("hist")
-c9.Draw()  
-c10 = R.TCanvas("c10")
+hgamma12_dPhi.GetXaxis().SetTitle("#Delta#phi")
+c9.SaveAs(args.outputdir+ "/Gamma1-2_dPhi_E{:.1f}_eta{:.1f}.png".format(args.energy, args.eta))
+c9.SaveAs(args.outputdir+ "/Gamma1-2_dPhi_E{:.1f}_eta{:.1f}.C".format(args.energy, args.eta))
+c9.Draw()
+
+c10 = R.TCanvas("c10", "", 800, 600)
 hgamma12_dR.Draw("hist")
+hgamma12_dR.GetXaxis().SetTitle("#DeltaR")
+c10.SaveAs(args.outputdir+ "/Gamma1-2_dR_E{:.1f}_eta{:.1f}.png".format(args.energy, args.eta))
+c10.SaveAs(args.outputdir+ "/Gamma1-2_dR_E{:.1f}_eta{:.1f}.C".format(args.energy, args.eta))
 c10.Draw() 
 
-c6 = R.TCanvas("c6")
+c6 = R.TCanvas("c6", "", 1100, 800)
+c6.SetRightMargin(0.15)
 hscan_Egamma1.Draw("colz")
+#hscan_Egamma1.GetZaxis().SetRangeUser(-10,2)
+hscan_Egamma1.SetTitle("En PF #gamma1 - E true #gamma1;E #gamma2;#DeltaR 1-2;#DeltaE (GeV)")
+c6.SaveAs(args.outputdir+ "/Overlapscan_gamma1_dEta_E{:.1f}_eta{:.1f}.png".format(args.energy, args.eta))
+c6.SaveAs(args.outputdir+ "/Overlapscan_gamma1_dEta_E{:.1f}_eta{:.1f}.C".format(args.energy, args.eta))
 c6.Draw()  
-c7 = R.TCanvas("c7")
-hscan_Egamma2.Draw("colz")
-c7.Draw()  
 
-c8 = R.TCanvas("c8")
-hbadevent_dR.Draw("hist")
-c8.Draw()  
+c7 = R.TCanvas("c7", "", 1100, 800)
+c7.SetRightMargin(0.15)
+hscan_Egamma2.Draw("colz")
+#hscan_Egamma2.GetZaxis().SetRangeUser(-5,15)
+hscan_Egamma2.SetTitle("En PF #gamma2 - E true #gamma2;E #gamma2;#DeltaR 1-2;#DeltaE (GeV)")
+c7.SaveAs(args.outputdir+ "/Overlapscan_gamma2_dEta_E{:.1f}_eta{:.1f}.png".format(args.energy, args.eta))
+c7.SaveAs(args.outputdir+ "/Overlapscan_gamma2_dEta_E{:.1f}_eta{:.1f}.C".format(args.energy, args.eta))
+c7.Draw()   
+
+# c8 = R.TCanvas("c8")
+# hbadevent_dR.Draw("hist")
+# c6.SaveAs(args.outputdir+ "/Overlapscan_gamma1_dEta_E{:1f}_eta{:1f}.png".format(args.energy, args.eta))
+# c6.SaveAs(args.outputdir+ "/Overlapscan_gamma1_dEta_E{:1f}_eta{:1f}.C".format(args.energy, args.eta))
+# c6.Draw()  
+# c8.Draw()  
 
 totbadevents = sum([v for v in nbadevents.values()])
 print "Number of bad events: {} ({:.2f}%)".format(totbadevents, 100*totbadevents/totevents)
