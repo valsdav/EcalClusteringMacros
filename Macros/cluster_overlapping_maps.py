@@ -11,6 +11,7 @@ from array import array
 
 R.TH1.SetDefaultSumw2()
 R.gStyle.SetOptFit(1111)
+R.gStyle.SetOptStat(0)
 
 '''
 This script plots a ieta:iphi map for cluster position and caloparticle position. 
@@ -63,23 +64,24 @@ for event in tree:
         for en, ieta, iphi in zip(energys, ietas, iphis):
             xtal_cluster_noise[(ieta, iphi)].append((nclus, en))
 
-    # print "XTAL_cluster"
-    # pprint(xtal_cluster)
-    # print "XTAL_cluster_noise" 
-    # pprint(xtal_cluster_noise)
-    # print "XTAL_calo"
-    # pprint(xtal_calo)
+    print "XTAL_cluster"
+    pprint(xtal_cluster)
+    print "XTAL_cluster_noise" 
+    pprint(xtal_cluster_noise)
+    print "XTAL_calo"
+    pprint(xtal_calo)
     
 
     
     # now the plotting
     mean_ieta_cl =   mean([ ieta for (ieta, iphi,_,_) in xtal_cluster.keys()]).round()
     mean_iphi_cl =   mean([ iphi for (ieta, iphi,_,_) in xtal_cluster.keys()]).round()
+    print(mean_ieta_cl, mean_iphi_cl)
 
     hratio_gamma1 = R.TH1F("eratio_g1", "", 100, -1, 2)
     hxtal_cluster       = R.TH2F("xtal_cluster", "xtal_cluster", 41, -20.5, +20.5, 41, -20.5, 20.5)
     hxtal_calo          = R.TH2F("xtal_calo", "xtal_caloparticle", 41, -20.5, +20.5, 41, -20.5, 20.5)
-    contours = array("d",[0,1,2,3])
+    contours = array("d",[1,2,3,4])
     hxtal_calo.SetContour(len(contours), contours )
     hxtal_calo.GetZaxis().SetRangeUser(contours[0], contours[-1])
     hxtal_calo.GetZaxis().SetNdivisions(3, False)
@@ -93,6 +95,7 @@ for event in tree:
         hxtal_cluster.Fill(ieta-mean_ieta_cl, iphi-mean_iphi_cl, iclu+1)
 
     for (ieta, iphi, icalo, simhit), clhits in xtal_calo.items():
+        print(ieta, iphi, icalo)
         hxtal_calo.Fill(ieta-mean_ieta_cl, iphi-mean_iphi_cl, icalo+1)
 
 
@@ -101,7 +104,7 @@ for event in tree:
     c1.Draw()               
             
     c2 = R.TCanvas("c2")
-    hxtal_calo.Draw("COLZ")
+    hxtal_calo.Draw("LEGO")
     c2.Draw()               
             
     raw_input("next?")

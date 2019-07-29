@@ -41,16 +41,18 @@ hgamma1_Eratio = R.TH1F("hgamma1_Eratio", "Epf/Ecalo #gamma1", 100, 0.7, 1.3)
 hgamma1_Eratio_gen = R.TH1F("hgamma1_Eratio_gen", "Ecalo/Egen #gamma1", 100, 0.7, 1.3)
 hgamma2_Eratio = R.TH1F("hgamma2_Eratio", "Epf/Ecalo #gamma2", 100, 0.7, 1.3)
 
-hgamma1_dEta = R.TH1F("gamma1_deltaEta", "#delta#eta #gamma1 (PF - true)", 50, -0.2,-0.2)
-hgamma1_dPhi = R.TH1F("gamma1_deltaPhi", "#delta#phi #gamma1 (PF - true)", 50, -0.1,-0.1)
-hgamma1_dR   = R.TH1F("gamma1_deltaR", "#deltaR #gamma1 (PF - true)", 30, 0,0.03)
+hgamma1_dEta = R.TH1F("gamma1_deltaEta", "#Delta#eta #gamma1 (PF - true)", 50, -0.2,-0.2)
+hgamma1_dPhi = R.TH1F("gamma1#DeltaPhi", "#Delta#phi #gamma1 (PF - true)", 50, -0.1,-0.1)
+hgamma1_dR   = R.TH1F("gamma1#DeltaR", "#DeltaR #gamma1 (PF - true)", 30, 0,0.03)
 
 #overlap plot
-hgamma12_dEta = R.TH1F("gamma12_deltaEta", "#delta#eta PF #gamma1-2", 50, -1,1)
-hgamma12_dPhi = R.TH1F("gamma12_deltaPhi", "#delta#phi PF #gamma1-2", 50, -1,1)
-hgamma12_dR   = R.TH1F("gamma12_deltaR", "#deltaR PF #gamma1-2", 30, 0,0.3)
-hscan_Egamma1 = R.TProfile2D("scan_Egamma1", "En PF #gamma1 - E true #gamma1",30, 0.5, 50, 40, 0, 0.2)
-hscan_Egamma2 = R.TProfile2D("scan_Egamma2", "En PF #gamma2 - E true #gamma2",30, 0.5, 50, 40, 0, 0.2)
+hgamma12_dEta = R.TH1F("gamma12#DeltaEta", "#Delta#eta PF #gamma1-2", 50, -1,1)
+hgamma12_dPhi = R.TH1F("gamma12#DeltaPhi", "#Delta#phi PF #gamma1-2", 50, -1,1)
+hgamma12_dR   = R.TH1F("gamma12#DeltaR", "#DeltaR PF #gamma1-2", 30, 0,0.1)
+hscan_Egamma1 = R.TProfile2D("scan_Egamma1", "En PF #gamma1 - E true #gamma1",25, 0.5, 50, 50, 0, 0.1)
+hscan_Egamma2 = R.TProfile2D("scan_Egamma2", "En PF #gamma2 - E true #gamma2",25, 0.5, 50, 50, 0, 0.1)
+hbadevent_dR    = R.TH1F("hbadevent_dR", "#DeltaR #gamma1-2 bad enents",  30, 0,0.1)
+nbadevents = {"noPfClusters":0, "noGamma1Cluster": 0, "noGamma2Cluster":0}
 
 def DeltaR(phi1, eta1, phi2, eta2):
         dphi = phi1 - phi2
@@ -60,8 +62,10 @@ def DeltaR(phi1, eta1, phi2, eta2):
         deltaR = (deta*deta) + (dphi*dphi)
         return deltaR
 
+totevents = 0
 
 for iev, event in enumerate(tree):
+    totevents+=1
     pbar.update()
     if debug: print '---', iev
 
@@ -125,31 +129,48 @@ for iev, event in enumerate(tree):
                         filter( lambda (k, v): k[2] == gamma1, xtal_calo.items() )
         ) ) ) )
 
-    if len(all_calo_clusters) > 0:
-        # get the cluster id with more hits associated with the caloparticle
-        gamma1_iclu = max(clids,  key = clids.count  ) 
-        all_calo_clusters.remove(gamma1_iclu)
-        calo_cluster_assoc[gamma1] = gamma1_iclu
-        # use the cluster raw energy saved by the dumper (in includes already noise
-        cluster_energies[gamma1] = pfCluster_energy[gamma1_iclu]
-        
-    if len(all_calo_clusters) == 1: 
-        gamma2_iclu = list(all_calo_clusters)[0]
-        calo_cluster_assoc[gamma2] = gamma2_iclu
-        # use the cluster raw energy saved by the dumper (in includes already noise
-        cluster_energies[gamma2] = pfCluster_energy[gamma2_iclu]
-    else:
-        # No clusters remained, can be that the 
-        calo_cluster_assoc[gamma2] = -1
-        cluster_energies[gamma2]  = 0
+    if len(all_calo_clusters) == 0:
+        # no calo clusters
         good_event = False
+        nbadevents["noPfClusters"] +=1
+    else:
+        if len(clids) > 0:
+            # get the cluster id with more hits associated with the caloparticle
+            gamma1_iclu = max(clids,  key = clids.count  ) 
+            all_calo_clusters.remove(gamma1_iclu)
+            calo_cluster_assoc[gamma1] = gamma1_iclu
+            # use the cluster raw energy saved by the dumper (in includes already noise
+            cluster_energies[gamma1] = pfCluster_energy[gamma1_iclu]
+        else:
+            # no calohit for gamma1
+            good_event = False
+            nbadevents["noGamma1Cluster"] += 1 
+            
+        if len(all_calo_clusters) == 1: 
+            gamma2_iclu = list(all_calo_clusters)[0]
+            calo_cluster_assoc[gamma2] = gamma2_iclu
+            # use the cluster raw energy saved by the dumper (in includes already noise
+            cluster_energies[gamma2] = pfCluster_energy[gamma2_iclu]
+        else:
+            # No clusters remained, can be that there is only 1 cluster associated to both the 
+            # caloparticles, or that one caloparticle is non associates 
+            calo_cluster_assoc[gamma2] = -1
+            cluster_energies[gamma2]  = 0
+            good_event = False
+            nbadevents["noGamma2Cluster"] += 1
+            
+    if not good_event: 
+        hbadevent_dR.Fill(DeltaR(calo_phi[gamma2], calo_eta[gamma2],
+                             calo_phi[gamma1], calo_eta[gamma1] ))
+        continue
 
-    
     if debug: 
         print "Gamma1) cluster energy: ", cluster_energies[gamma1], " sum of simhits calo: ", calo_simE[gamma1], \
             " calo truth: ", calo_genE[gamma1]
         print "Gamma2) cluster energy: ", cluster_energies[gamma2], " sum of simhits calo: ", calo_simE[gamma2], \
             " calo truth: ", calo_genE[gamma2]
+
+    
 
     hgamma1_Eratio.Fill(cluster_energies[gamma1]/calo_simE[gamma1])
     hgamma1_Eratio_gen.Fill(calo_simE[gamma1]/calo_genE[gamma1])    
@@ -161,9 +182,7 @@ for iev, event in enumerate(tree):
                              pfCluster_eta[ calo_cluster_assoc[gamma1] ] ,
                              calo_phi[gamma1], calo_eta[gamma1] ))
 
-    if not good_event: 
-        print "Bad event"
-        continue
+    
 
     hgamma2_Eratio.Fill(cluster_energies[gamma2]/calo_simE[gamma2])
     #Overlap plots
@@ -215,7 +234,18 @@ c7 = R.TCanvas("c7")
 hscan_Egamma2.Draw("colz")
 c7.Draw()  
 
+c8 = R.TCanvas("c8")
+hbadevent_dR.Draw("hist")
+c8.Draw()  
 
+totbadevents = sum([v for v in nbadevents.values()])
+print "Number of bad events: {} ({:.2f}%)".format(totbadevents, 100*totbadevents/totevents)
+print "Number of bad events (no PfClusters): {} ({:.3f}%)".format(nbadevents["noPfClusters"], 
+                                                        100*nbadevents["noPfClusters"]/totevents)
+print "Number of bad events (no Gamma1 cluster): {} ({:.3f}%)".format(nbadevents["noGamma1Cluster"], 
+                                                        100*nbadevents["noGamma1Cluster"]/totevents)
+print "Number of bad events (no Gamma2 cluster): {} ({:.3f}%)".format(nbadevents["noGamma2Cluster"], 
+                                                        100*nbadevents["noGamma2Cluster"]/totevents)
 ##################################################
 # Snippets
 
