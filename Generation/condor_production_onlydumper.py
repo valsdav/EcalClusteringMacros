@@ -13,10 +13,7 @@ group them in strips reading a DOF file
 '''
 parser = argparse.ArgumentParser()
 
-#parser.add_argument("-f", "--files", type=str, help="input file", required=True)
-parser.add_argument("--energy", type=float,nargs='+', help="energies", required=True)
-parser.add_argument("--eta", type=float,nargs='+', help="etas", required=True)
-parser.add_argument("-n", "--nevents", type=int, help="n events", required=True)
+parser.add_argument("-i", "--inputdir", type=str, help="Inputdir", required=True)
 parser.add_argument("-o", "--outputdir", type=str, help="Outputdir", required=True)
 parser.add_argument("-c", "--cmssw", type=str, help="CMSSW tar", required=True)
 parser.add_argument("-q", "--queue", type=str, help="Condor queue", default="longlunch", required=True)
@@ -49,28 +46,18 @@ cd {cmssw_file}/src
 
 echo -e "evaluate"
 eval `scramv1 ru -sh`
-export HOME='/afs/cern.ch/user/{user1}/{user}'
+export HOME='/afs/cern.ch/user/{user1}/{user};
 
-JOBID=$1; shift; 
-OUTPUTFILE=$1;
-NEVENTS=$2;
-EMIN=$3
-EMAX=$4
-ZMIN=$5
-ZMAX=$6
-RMIN=$7
-RMAX=$8
-SEED1=$9
-SEED2=${10}
-SEED3=${11}
-SEED4=${12}
+JOBID=$1; 
+INPUTFILE=$2; 
+OUTPUTFILE=$3;
 
 cd RecoSimStudies/Dumpers/test
 
 echo -e "cmsRun..";
 
 echo -e ">>> copy from STEP3";
-xrdcp --nopbar root://eos{eosinstance}.cern.ch/${OUTPUTFILE}_step3.root step3.root;
+xrdcp --nopbar root://eos{eosinstance}.cern.ch/${INPUTFILE} step3.root;
 
 echo -e "Running dumper.."
 
@@ -95,37 +82,18 @@ arguments= []
 if not os.path.exists(args.outputdir):
     os.makedirs(args.outputdir)
 
+inputfiles = [f for f in os.listdir(args.inputdir) if "step3" in f]
 outputfiles = [args.outputdir +"/"+f for f in os.listdir(args.outputdir)]
 
-
-# distance measured in cm
-def getR_Z(eta):
-    st = 1 / cosh(eta)
-    if eta < 1.4790:
-        R = 123.8
-        Z = (R * sqrt(1- st**2)) / st
-
-    else:
-        Z = 317
-        R = (Z * st)/ sqrt(1- st**2)
-    return R, Z
-
 jobid = 0
-for en in args.energy:
-    for eta in args.eta:
-        R,Z = getR_Z(eta)
-        print("Eta: {} | R: {} | Z: {}".format(eta,R,Z))
+for inputfile in inputfiles:
+    jobid +=1
+    outputfile = args.outputdir + "/" + inputfile.remove("_step3")
 
-        jobid +=1
-        outputfile = args.outputdir + "/cluster_en{:.1f}_eta{:.1f}".format(en,eta)
-    
-        if not args.redo and outputfile+".root" in outputfiles:
-            continue
-        arguments.append("{} {} {} {} {} {} {} {} {} {} {} {} {}".format(
-            jobid,outputfile,args.nevents, en-0.0001,en+0.0001,
-            Z-0.0001,Z+0.0001,R-0.0001, R+0.0001,
-            random.randint(1,10000),random.randint(1,10000),
-            random.randint(1,10000),random.randint(1,10000)))
+    if not args.redo and outputfile+".root" in outputfiles:
+        continue
+    arguments.append("{} {} {} {} {} {} {} {} {} {} {} {} {}".format(
+        jobid,args.inputdir+"/"+inputfile, outputfile))
 
 print("Njobs: ", len(arguments))
     
