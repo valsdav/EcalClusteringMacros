@@ -68,20 +68,9 @@ SEED4=${12}
 cd RecoSimStudies/Dumpers/test
 
 echo -e "cmsRun..";
-echo -e ">>> STEP1";
-cmsRun step1_CloseEcal_cfi_GEN_SIM.py jobid=$JOBID  maxEvents=$NEVENTS \
-    emin=$EMIN emax=$EMAX zmin=$ZMIN zmax=$ZMAX rmin=$RMIN rmax=$RMAX;
 
-echo -e ">>> STEP2";
-cmsRun step2_DIGI_L1_DIGI2RAW_HLT.py
- 
-#xrdcp --nopbar step2.root root://eos{eosinstance}.cern.ch/${OUTPUTFILE}_step2.root;
-
-echo -e ">>> STEP3";
-cmsRun step3_RAW2DIGI_L1Reco_RECO_RECOSIM_EI_PAT_VALIDATION_DQM.py
-
-xrdcp --nopbar step3.root root://eos{eosinstance}.cern.ch/${OUTPUTFILE}_step3.root;
-
+echo -e ">>> copy from STEP3";
+xrdcp --nopbar root://eos{eosinstance}.cern.ch/${OUTPUTFILE}_step3.root step3.root;
 
 echo -e "Running dumper.."
 
