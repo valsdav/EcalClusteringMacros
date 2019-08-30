@@ -99,12 +99,12 @@ for event in tree:
         hxtal_calo.Fill(ieta-mean_ieta_cl, iphi-mean_iphi_cl, icalo+1)
 
 
-    c1 = R.TCanvas("c1")
+    c1 = R.TCanvas("c1", "", 800,800)
     hxtal_cluster.Draw("COLZ")
     c1.Draw()               
             
-    c2 = R.TCanvas("c2")
-    hxtal_calo.Draw("LEGO")
+    c2 = R.TCanvas("c2", "", 800,800)
+    hxtal_calo.Draw("COLZ")
     c2.Draw()               
             
     raw_input("next?")
