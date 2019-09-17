@@ -13,6 +13,7 @@ import argparse
 R.TH1.SetDefaultSumw2()
 R.gStyle.SetOptFit(1111)
 R.gStyle.SetOptStat(0)
+R.gROOT.SetBatch(True)
 
 '''
 This script analyse the overlapping of two caloparticles
@@ -22,10 +23,11 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--energy", type=float, help="energy gamma1", required=True)
 parser.add_argument("--eta", type=float, help="eta gamma1", required=True)
 parser.add_argument("--maxR", type=float, help="maxR plot", required=True)
+parser.add_argument("--maxE", type=float, help="maxE plot", required=True)
 parser.add_argument("--inputfile", type=str, help="inputfile", required=True)
 parser.add_argument("--outputdir", type=str, help="outputdir", required=True)
 parser.add_argument("--nevents", type=int,nargs="+", help="n events iterator", required=False)
-parser.add_argument("--debug", type=bool,  help="debug", default=False)
+parser.add_argument("--debug", type=int,  help="debug", default=False)
 args = parser.parse_args()
 
 if not os.path.exists(args.outputdir):
@@ -61,8 +63,8 @@ hgamma1_dR   = R.TH1F("gamma1#DeltaR", "#DeltaR #gamma1 (PF - true)", 30, 0,0.03
 hgamma12_dEta = R.TH1F("gamma12#DeltaEta", "#Delta#eta PF #gamma1-2", 50, -1,1)
 hgamma12_dPhi = R.TH1F("gamma12#DeltaPhi", "#Delta#phi PF #gamma1-2", 50, -1,1)
 hgamma12_dR   = R.TH1F("gamma12#DeltaR", "#DeltaR PF #gamma1-2", 30, 0,0.1)
-hscan_Egamma1 = R.TProfile2D("scan_Egamma1", "En PF #gamma1 - E true #gamma1",25, 0.5, 100, 25, 0, args.maxR)
-hscan_Egamma2 = R.TProfile2D("scan_Egamma2", "En PF #gamma2 - E true #gamma2",25, 0.5, 100, 25, 0, args.maxR)
+hscan_Egamma1 = R.TProfile2D("scan_Egamma1", "En PF #gamma1 - E true #gamma1",20, 0.5, args.maxE, 20, 0, args.maxR)
+hscan_Egamma2 = R.TProfile2D("scan_Egamma2", "En PF #gamma2 - E true #gamma2",20, 0.5, args.maxE, 20, 0, args.maxR)
 hbadevent_dR    = R.TH1F("hbadevent_dR", "#DeltaR #gamma1-2 bad enents",  30, 0,args.maxR)
 nbadevents = {"noPfClusters":0, "noGamma1cluster": 0, "noGamma2cluster":0}
 
@@ -188,8 +190,7 @@ for iev, event in enumerate(tree):
             calos_in_cluster = list(map(itemgetter(0), cluster_calo_assoc[all_calo_clusters[0]]))
             if gamma1 in calos_in_cluster and gamma2 in calos_in_cluster:
                 #overlapping 
-                print "problem -> merged"
-                debug = True
+                if debug: print "problem -> merged"
                 merged_event = True
                 if calos_in_cluster.index(gamma1) > calos_in_cluster.index(gamma2):
                     # gamma1 has won
@@ -200,15 +201,13 @@ for iev, event in enumerate(tree):
                     cluster_energies[gamma1] = 0.
                     cluster_energies[gamma2] = pfCluster_energy[all_calo_clusters[0]]
             else:
-                print("problem -> missing calo")
-                debug = True
+                if debug: print("problem -> missing calo")
                 good_event = False
 
     elif len(all_calo_clusters) == 1:
         #only one cluster, let's check if it has both the caloparticle
         if len(cluster_calo_assoc[all_calo_clusters[0]]) >1:
-            print("merged")
-            debug = True
+            if debug: print("merged")
             merged_event = True
             if gamma1 in sorted_calo_cluster_assoc:
                 # gamma1 has won
@@ -219,8 +218,7 @@ for iev, event in enumerate(tree):
                 cluster_energies[gamma1] = 0.
                 cluster_energies[gamma2] = pfCluster_energy[sorted_calo_cluster_assoc[gamma2][0]]
         else:
-            print "missing calo"
-            debug = True
+            if debug:  print "missing calo"
             good_event = False
             if gamma1 in cluster_calo_assoc:                
                 nbadevents["noGamma2cluster"] += 1
@@ -271,13 +269,14 @@ for iev, event in enumerate(tree):
         hgamma12_dEta.Fill(0.)
         hgamma12_dPhi.Fill(0.)
         hgamma12_dR.Fill(0.)
+        deltaR_clusters = 0.
     
 
     # plot: x = gamma2 true energy, y = deltaR clusters, Z = pf energy - true energy
     hscan_Egamma1.Fill(calo_simE[gamma2],deltaR_clusters, cluster_energies[gamma1] - calo_simE[gamma1] )
     hscan_Egamma2.Fill(calo_simE[gamma2],deltaR_clusters, cluster_energies[gamma2] - calo_simE[gamma2] )
 
-    if args.debug: raw_input("next?")
+    if args.debug == 2 : raw_input("next?")
 
 c1 = R.TCanvas("c1", "", 800, 600)
 hgamma1_Eratio.Draw("hist")
