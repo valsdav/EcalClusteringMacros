@@ -1,0 +1,6 @@
+*.err
+*.out
+*.log
+*.pyc
+*.png
+*.root
