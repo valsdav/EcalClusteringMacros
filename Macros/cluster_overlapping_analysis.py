@@ -28,8 +28,6 @@ parser.add_argument("--nevents", type=int,nargs="+", help="n events iterator", r
 parser.add_argument("--debug", type=bool,  help="debug", default=False)
 args = parser.parse_args()
 
-debug = args.debug
-
 if not os.path.exists(args.outputdir):
     os.makedirs(args.outputdir)
 
@@ -66,7 +64,7 @@ hgamma12_dR   = R.TH1F("gamma12#DeltaR", "#DeltaR PF #gamma1-2", 30, 0,0.1)
 hscan_Egamma1 = R.TProfile2D("scan_Egamma1", "En PF #gamma1 - E true #gamma1",25, 0.5, 100, 25, 0, args.maxR)
 hscan_Egamma2 = R.TProfile2D("scan_Egamma2", "En PF #gamma2 - E true #gamma2",25, 0.5, 100, 25, 0, args.maxR)
 hbadevent_dR    = R.TH1F("hbadevent_dR", "#DeltaR #gamma1-2 bad enents",  30, 0,args.maxR)
-nbadevents = {"noPfClusters":0, "noGamma1Cluster": 0, "noGamma2Cluster":0}
+nbadevents = {"noPfClusters":0, "noGamma1cluster": 0, "noGamma2cluster":0}
 
 
 
@@ -82,6 +80,7 @@ totevents = 0
 
 for iev, event in enumerate(tree):
     totevents+=1
+    debug = args.debug
     pbar.update()
     if debug: print '---', iev
 
@@ -122,99 +121,163 @@ for iev, event in enumerate(tree):
                     xtal_calo[(ieta, iphi, icalo, simhit)].append((chit.first, chit.second))
             #else:
                 #print ieta, iphi, "{:.5f}".format(simhit), "!!! No Cluster hits"
-                    
+
+
     ####################################################
-    # Analysis on the clusterhits for each caloparticle
+    # Analysis of the caloparticle, pfcluster association
+    # - Associate to each pfCluster the calo with the greatest fraction of 
+    #   its simEnergy. (save the ordered list of them by fraction)
+    # - Save a list of pfcluster associated with the method before to 
+    #   a caloparticle (there can be more than one)
     #######################################################
-    cluster_energies = {}
-    calo_cluster_assoc = {}
+    all_calo_clusters = list(set(map( itemgetter(2), xtal_cluster.keys())))
 
-    # the event is bad if one of the caloparticle
-    # doesn't have any associated pfClusterHit
-    good_event = True
-
-    all_calo_clusters = set(map( itemgetter(2), xtal_cluster.keys()))
+    cluster_calo_fraction = defaultdict(dict)
+    for (ieta,iphi,clid, clhit), (caloinfo) in xtal_cluster.items():
+        for icalo, simhit in caloinfo:
+            if icalo not in cluster_calo_fraction[clid]:
+                cluster_calo_fraction[clid][icalo] = 0.
+            cluster_calo_fraction[clid][icalo] += (simhit / calo_simE[icalo])
     
-    # cluster ids associated with caloparticle
-    clids =  list( 
-        map( itemgetter(0),        
-                chain.from_iterable( 
-                    # chain clusters hits
-                    map( lambda (k,clusters): clusters,
-                        # select gamma1
-                        filter( lambda (k, v): k[2] == gamma1, xtal_calo.items() )
-        ) ) ) )
+    # # Filter out calo with less than 5% fraction 
+    # clean_cluster_calo_fraction = defaultdict(dict)
+    # for clid, calos in cluster_calo_fraction.items():
+    #     for icalo, frac in calos.items():
+    #         if frac > 0.05:
+    #             clean_cluster_calo_fraction[clid][icalo] = frac
+
+    # print(clean_cluster_calo_fraction)
+
+    calo_cluster_assoc = defaultdict(list)
+    cluster_calo_assoc = {}
+
+    for clid, calofrac in cluster_calo_fraction.items():
+        # order caloparticle by fraction
+        caloids =  list(sorted(calofrac.items(), key=itemgetter(1), reverse=True))
+        # Associate to che cluster the list of caloparticles ordered by fraction 
+        cluster_calo_assoc[clid] = caloids
+        # save for the calocluster in the caloparticle if it is the one with more fraction
+        # This is necessary in case one caloparticle is linked with more than one cluster
+        calo_cluster_assoc[caloids[0][0]].append((clid, caloids[0][1] ))
+        
+    # Now sort the clusters associated to a caloparticle with the fraction 
+    sorted_calo_cluster_assoc = {}
+    for caloid, clinfo in calo_cluster_assoc.items():
+        sorted_calo_cluster_assoc[caloid] = list(map(itemgetter(0), sorted(clinfo, key=itemgetter(1), reverse=True)))
+    
+    good_event = True
+    merged_event = False
+    cluster_energies = {}
 
     if len(all_calo_clusters) == 0:
         # no calo clusters
         good_event = False
         nbadevents["noPfClusters"] +=1
-    else:
-        if len(clids) > 0:
-            # get the cluster id with more hits associated with the caloparticle
-            gamma1_iclu = max(clids,  key = clids.count  ) 
-            all_calo_clusters.remove(gamma1_iclu)
-            calo_cluster_assoc[gamma1] = gamma1_iclu
-            # use the cluster raw energy saved by the dumper (in includes already noise
-            cluster_energies[gamma1] = pfCluster_energy[gamma1_iclu]
+
+    elif len(all_calo_clusters) > 1:
+        # Bothe the calo has a cluster (different by construction)
+        if gamma1 in sorted_calo_cluster_assoc and gamma2 in sorted_calo_cluster_assoc:
+            # Take the cluster with bigger fraction 
+            cluster_energies[gamma1] = pfCluster_energy[sorted_calo_cluster_assoc[gamma1][0]]
+            cluster_energies[gamma2] = pfCluster_energy[sorted_calo_cluster_assoc[gamma2][0]]
         else:
-            # no calohit for gamma1
-            good_event = False
-            nbadevents["noGamma1Cluster"] += 1 
+            # There is more than 1 cluster but or the two hare associated with the same
+            # or one calo is missing
             
-        if len(all_calo_clusters) == 1: 
-            gamma2_iclu = list(all_calo_clusters)[0]
-            calo_cluster_assoc[gamma2] = gamma2_iclu
-            # use the cluster raw energy saved by the dumper (in includes already noise
-            cluster_energies[gamma2] = pfCluster_energy[gamma2_iclu]
+            # Get the list of calos ordered by fraction
+            calos_in_cluster = list(map(itemgetter(0), cluster_calo_assoc[all_calo_clusters[0]]))
+            if gamma1 in calos_in_cluster and gamma2 in calos_in_cluster:
+                #overlapping 
+                print "problem -> merged"
+                debug = True
+                merged_event = True
+                if calos_in_cluster.index(gamma1) > calos_in_cluster.index(gamma2):
+                    # gamma1 has won
+                    cluster_energies[gamma1] = pfCluster_energy[all_calo_clusters[0]]
+                    cluster_energies[gamma2] = 0.
+                else:
+                    # gamma2 has won
+                    cluster_energies[gamma1] = 0.
+                    cluster_energies[gamma2] = pfCluster_energy[all_calo_clusters[0]]
+            else:
+                print("problem -> missing calo")
+                debug = True
+                good_event = False
+
+    elif len(all_calo_clusters) == 1:
+        #only one cluster, let's check if it has both the caloparticle
+        if len(cluster_calo_assoc[all_calo_clusters[0]]) >1:
+            print("merged")
+            debug = True
+            merged_event = True
+            if gamma1 in sorted_calo_cluster_assoc:
+                # gamma1 has won
+                cluster_energies[gamma1] = pfCluster_energy[sorted_calo_cluster_assoc[gamma1][0]]
+                cluster_energies[gamma2] = 0.
+            elif gamma2 in sorted_calo_cluster_assoc:
+                # gamma2 has won
+                cluster_energies[gamma1] = 0.
+                cluster_energies[gamma2] = pfCluster_energy[sorted_calo_cluster_assoc[gamma2][0]]
         else:
-            # No clusters remained, can be that there is only 1 cluster associated to both the 
-            # caloparticles, or that one caloparticle is non associates 
-            calo_cluster_assoc[gamma2] = -1
-            cluster_energies[gamma2]  = 0
+            print "missing calo"
+            debug = True
             good_event = False
-            nbadevents["noGamma2Cluster"] += 1
-            
+            if gamma1 in cluster_calo_assoc:                
+                nbadevents["noGamma2cluster"] += 1
+            else: 
+                nbadevents["noGamma1cluster"] += 1
+
     if not good_event: 
         hbadevent_dR.Fill(DeltaR(calo_phi[gamma2], calo_eta[gamma2],
                              calo_phi[gamma1], calo_eta[gamma1] ))
         continue
 
     if debug: 
-        print "Gamma1) cluster energy: ", cluster_energies[gamma1], " sum of simhits calo: ", calo_simE[gamma1], \
-            " calo truth: ", calo_genE[gamma1]
-        print "Gamma2) cluster energy: ", cluster_energies[gamma2], " sum of simhits calo: ", calo_simE[gamma2], \
-            " calo truth: ", calo_genE[gamma2]
+        print("calo cluster assoc", sorted_calo_cluster_assoc)
+        print("cluster calo assoc", cluster_calo_assoc)
+        if good_event:
+            print "Gamma1) cluster energy: ", cluster_energies[gamma1], " sum of simhits calo: ", calo_simE[gamma1], \
+                " calo truth: ", calo_genE[gamma1]
+            print "Gamma2) cluster energy: ", cluster_energies[gamma2], " sum of simhits calo: ", calo_simE[gamma2], \
+                " calo truth: ", calo_genE[gamma2]
+        else:
+            print(">> BAD event")
 
     
-
     hgamma1_Eratio.Fill(cluster_energies[gamma1]/calo_simE[gamma1])
     hgamma1_Eratio_gen.Fill(calo_simE[gamma1]/calo_genE[gamma1])    
 
     # Gamma 1 pfCluster vs true caloparticle (simhit)
-    hgamma1_dEta.Fill(pfCluster_eta[ calo_cluster_assoc[gamma1] ] - calo_eta[gamma1])
-    hgamma1_dPhi.Fill(pfCluster_phi[ calo_cluster_assoc[gamma1] ] - calo_phi[gamma1])
-    hgamma1_dR.Fill(DeltaR(pfCluster_phi[ calo_cluster_assoc[gamma1] ],
-                             pfCluster_eta[ calo_cluster_assoc[gamma1] ] ,
-                             calo_phi[gamma1], calo_eta[gamma1] ))
+    if gamma1 in sorted_calo_cluster_assoc:
+        hgamma1_dEta.Fill(pfCluster_eta[ sorted_calo_cluster_assoc[gamma1][0] ] - calo_eta[gamma1])
+        hgamma1_dPhi.Fill(pfCluster_phi[ sorted_calo_cluster_assoc[gamma1][0] ] - calo_phi[gamma1])
+        hgamma1_dR.Fill(DeltaR(pfCluster_phi[ sorted_calo_cluster_assoc[gamma1][0] ],
+                                pfCluster_eta[ sorted_calo_cluster_assoc[gamma1][0] ] ,
+                                calo_phi[gamma1], calo_eta[gamma1] ))
 
     
-
     hgamma2_Eratio.Fill(cluster_energies[gamma2]/calo_simE[gamma2])
+
+    if not merged_event:
     #Overlap plots
-    deltaR_clusters = DeltaR(pfCluster_phi[ calo_cluster_assoc[gamma1] ],
-                             pfCluster_eta[ calo_cluster_assoc[gamma1] ] ,
-                             pfCluster_phi[ calo_cluster_assoc[gamma2] ],
-                             pfCluster_eta[ calo_cluster_assoc[gamma2] ]  )
+        deltaR_clusters = DeltaR(pfCluster_phi[ sorted_calo_cluster_assoc[gamma1][0] ],
+                                pfCluster_eta[ sorted_calo_cluster_assoc[gamma1][0] ] ,
+                                pfCluster_phi[ sorted_calo_cluster_assoc[gamma2][0] ],
+                                pfCluster_eta[ sorted_calo_cluster_assoc[gamma2][0] ]  )
+        hgamma12_dEta.Fill(pfCluster_eta[ sorted_calo_cluster_assoc[gamma1][0] ] - pfCluster_eta[ sorted_calo_cluster_assoc[gamma2][0] ])
+        hgamma12_dPhi.Fill(pfCluster_phi[ sorted_calo_cluster_assoc[gamma1][0] ] - pfCluster_phi[ sorted_calo_cluster_assoc[gamma2][0] ])
+        hgamma12_dR.Fill( deltaR_clusters)
+    else:
+        hgamma12_dEta.Fill(0.)
+        hgamma12_dPhi.Fill(0.)
+        hgamma12_dR.Fill(0.)
     
-    hgamma12_dEta.Fill(pfCluster_eta[ calo_cluster_assoc[gamma1] ] - pfCluster_eta[ calo_cluster_assoc[gamma2] ])
-    hgamma12_dPhi.Fill(pfCluster_phi[ calo_cluster_assoc[gamma1] ] - pfCluster_phi[ calo_cluster_assoc[gamma2] ])
-    hgamma12_dR.Fill( deltaR_clusters)
 
     # plot: x = gamma2 true energy, y = deltaR clusters, Z = pf energy - true energy
     hscan_Egamma1.Fill(calo_simE[gamma2],deltaR_clusters, cluster_energies[gamma1] - calo_simE[gamma1] )
     hscan_Egamma2.Fill(calo_simE[gamma2],deltaR_clusters, cluster_energies[gamma2] - calo_simE[gamma2] )
 
+    if args.debug: raw_input("next?")
 
 c1 = R.TCanvas("c1", "", 800, 600)
 hgamma1_Eratio.Draw("hist")
@@ -302,28 +365,8 @@ totbadevents = sum([v for v in nbadevents.values()])
 print "Number of bad events: {} ({:.2f}%)".format(totbadevents, 100*totbadevents/totevents)
 print "Number of bad events (no PfClusters): {} ({:.3f}%)".format(nbadevents["noPfClusters"], 
                                                         100*nbadevents["noPfClusters"]/totevents)
-print "Number of bad events (no Gamma1 cluster): {} ({:.3f}%)".format(nbadevents["noGamma1Cluster"], 
-                                                        100*nbadevents["noGamma1Cluster"]/totevents)
-print "Number of bad events (no Gamma2 cluster): {} ({:.3f}%)".format(nbadevents["noGamma2Cluster"], 
-                                                        100*nbadevents["noGamma2Cluster"]/totevents)
-##################################################
-# Snippets
-
-# sum the cluster hit associated with the clusterassociated to the gammaX caloparticle
-# assing also noise
-# cluster_energies[gammaX]  =  sum( 
-#         map(itemgetter(1), 
-#             # filter cluster index
-#             filter( lambda v: v[0] == gammaX_iclu, 
-#                 chain.from_iterable( 
-#                     # chain clusters hits
-#                     map( lambda (k,clusters): clusters,
-#                         # select gammaX
-#                         filter( lambda (k, v): k[2] == gammaX, xtal_calo.items() )
-#     ) ) ) ) 
-#     )  + sum(
-#             map(itemgetter(1), #summing the noise energy in that cluster 
-#                 chain.from_iterable( 
-#                     map(lambda (k, v): v,
-#                         filter(lambda (k,v): k==gammaX_iclu, xtal_cluster_noise.items()) 
-#     ) ) ) ) 
+print "Number of bad events (no Gamma1 cluster): {} ({:.3f}%)".format(nbadevents["noGamma1cluster"], 
+                                                        100*nbadevents["noGamma1cluster"]/totevents)
+print "Number of bad events (no Gamma2 cluster): {} ({:.3f}%)".format(nbadevents["noGamma2cluster"], 
+                                                        100*nbadevents["noGamma2cluster"]/totevents)
+# ##################################################
