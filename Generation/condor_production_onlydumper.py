@@ -14,7 +14,7 @@ group them in strips reading a DOF file
 parser = argparse.ArgumentParser()
 
 #parser.add_argument("-f", "--files", type=str, help="input file", required=True)
-parser.add_argument("-i", "--inputdir", type=str, help="Outputdir", required=True)
+parser.add_argument("-i", "--inputdir", type=str, help="Inputdir", required=True)
 parser.add_argument("-o", "--outputdir", type=str, help="Outputdir", required=True)
 parser.add_argument("-c", "--cmssw", type=str, help="CMSSW tar", required=True)
 parser.add_argument("-q", "--queue", type=str, help="Condor queue", default="longlunch", required=True)
