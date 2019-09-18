@@ -36,7 +36,7 @@ for event in tree:
     print("---")
     pbar.update()
     ncalo = event.caloParticle_pt.size()
-    calo_trueE = event.caloParticle_simEnergy
+    calo_simE = event.caloParticle_simEnergy
     
     # map (ieta,iphi,icalo, simhit):(iclu, clhit)
     xtal_calo = defaultdict(list)
@@ -64,20 +64,48 @@ for event in tree:
         for en, ieta, iphi in zip(energys, ietas, iphis):
             xtal_cluster_noise[(ieta, iphi)].append((nclus, en))
 
-    ###########################
-    #cluster-calo association
+    ####################################################
+    # Analysis of the caloparticle, pfcluster association
+    # - Associate to each pfCluster the calo with the greatest fraction of 
+    #   its simEnergy. (save the ordered list of them by fraction)
+    # - Save a list of pfcluster associated with the method before to 
+    #   a caloparticle (there can be more than one)
+    #######################################################
+    all_calo_clusters = list(set(map( itemgetter(2), xtal_cluster.keys())))
+
     cluster_calo_fraction = defaultdict(dict)
     for (ieta,iphi,clid, clhit), (caloinfo) in xtal_cluster.items():
         for icalo, simhit in caloinfo:
             if icalo not in cluster_calo_fraction[clid]:
                 cluster_calo_fraction[clid][icalo] = 0.
-            cluster_calo_fraction[clid][icalo] += (simhit / calo_trueE[icalo])
+            cluster_calo_fraction[clid][icalo] += (simhit / calo_simE[icalo])
+    
+    # # Filter out calo with less than 5% fraction 
+    # clean_cluster_calo_fraction = defaultdict(dict)
+    # for clid, calos in cluster_calo_fraction.items():
+    #     for icalo, frac in calos.items():
+    #         if frac > 0.05:
+    #             clean_cluster_calo_fraction[clid][icalo] = frac
 
-    print(cluster_calo_fraction)
+    # print(clean_cluster_calo_fraction)
+
+    calo_cluster_assoc = defaultdict(list)
     cluster_calo_assoc = {}
+
     for clid, calofrac in cluster_calo_fraction.items():
-        caloid = sorted(calofrac.items(), key=itemgetter(1), reverse=True)[0][0]
-        cluster_calo_assoc[clid] = caloid
+        # order caloparticle by fraction
+        caloids =  list(sorted(calofrac.items(), key=itemgetter(1), reverse=True))
+        # Associate to che cluster the list of caloparticles ordered by fraction 
+        cluster_calo_assoc[clid] = caloids
+        # save for the calocluster in the caloparticle if it is the one with more fraction
+        # This is necessary in case one caloparticle is linked with more than one cluster
+        calo_cluster_assoc[caloids[0][0]].append((clid, caloids[0][1] ))
+        
+    # Now sort the clusters associated to a caloparticle with the fraction 
+    sorted_calo_cluster_assoc = {}
+    for caloid, clinfo in calo_cluster_assoc.items():
+        sorted_calo_cluster_assoc[caloid] = list(map(itemgetter(0), sorted(clinfo, key=itemgetter(1), reverse=True)))
+    
 
     print "XTAL_cluster"
     pprint(xtal_cluster)
@@ -96,6 +124,10 @@ for event in tree:
     hxtal_cluster       = R.TH2F("xtal_cluster", "xtal_cluster", 41, -20.5, +20.5, 41, -20.5, 20.5)
     hxtal_cluster_assoc = R.TH2F("xtal_cluster_assoc", "xtal_cluster_assoc", 41, -20.5, +20.5, 41, -20.5, 20.5)
     hxtal_calo          = R.TH2F("xtal_calo", "xtal_caloparticle", 41, -20.5, +20.5, 41, -20.5, 20.5)
+    hxtal_calo_fraction1 = R.TH2F("xtal_calo_fraction1", "xtal_caloparticle_frac1", 41, -20.5, +20.5, 41, -20.5, 20.5)
+    hxtal_calo_fraction2 = R.TH2F("xtal_calo_fraction2", "xtal_caloparticle_frac2", 41, -20.5, +20.5, 41, -20.5, 20.5)
+    hxtal_calo_fractions = [hxtal_calo_fraction1,hxtal_calo_fraction2]    
+
     contours = array("d",[1,2,3,4])
     hxtal_calo.SetContour(len(contours), contours )
     hxtal_calo.GetZaxis().SetRangeUser(contours[0], contours[-1])
@@ -111,12 +143,18 @@ for event in tree:
         # print(ieta, iphi, iclu, clhit)
         # print(calohits)
         hxtal_cluster.Fill(ieta-mean_ieta_cl, iphi-mean_iphi_cl, iclu+1)
-        hxtal_cluster_assoc.Fill(ieta-mean_ieta_cl, iphi-mean_iphi_cl, cluster_calo_assoc[iclu]+1)
+        hxtal_cluster_assoc.Fill(ieta-mean_ieta_cl, iphi-mean_iphi_cl, cluster_calo_assoc[iclu][0][0]+1)
 
     for (ieta, iphi, icalo, simhit), clhits in xtal_calo.items():
         print(ieta, iphi, icalo)
         hxtal_calo.Fill(ieta-mean_ieta_cl, iphi-mean_iphi_cl, icalo+1)
 
+    for icalo in range(2):
+        for (ieta,iphi,clid, clhit), (caloinfo) in xtal_cluster.items():
+            for ical, simhit in caloinfo:
+                if ical != icalo: continue
+                hxtal_calo_fractions[icalo].Fill(ieta-mean_ieta_cl, iphi-mean_iphi_cl, simhit / calo_simE[icalo])
+            
 
     c1 = R.TCanvas("c1", "", 800,800)
     hxtal_cluster.Draw("COLZ")
@@ -128,6 +166,19 @@ for event in tree:
 
     c3 = R.TCanvas("c3", "", 800,800)
     hxtal_cluster_assoc.Draw("COLZ")
-    c3.Draw()                        
+    c3.Draw()   
+
+
+    c4 = R.TCanvas("c4", "", 800,800)
+    hxtal_calo_fractions[0].Draw("COLZ")
+    c4.SetLogz()
+    hxtal_calo_fractions[0].GetZaxis().SetRangeUser(1e-5, 1)
+    c4.Draw()   
+
+    c5 = R.TCanvas("c5", "", 800,800)
+    hxtal_calo_fractions[1].Draw("COLZ")
+    c5.SetLogz()
+    hxtal_calo_fractions[1].GetZaxis().SetRangeUser(1e-5, 1)
+    c5.Draw()                        
             
     raw_input("next?")
