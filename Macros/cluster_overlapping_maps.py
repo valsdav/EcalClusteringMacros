@@ -64,6 +64,21 @@ for event in tree:
         for en, ieta, iphi in zip(energys, ietas, iphis):
             xtal_cluster_noise[(ieta, iphi)].append((nclus, en))
 
+    ###########################
+    #cluster-calo association
+    cluster_calo_fraction = defaultdict(dict)
+    for (ieta,iphi,clid, clhit), (caloinfo) in xtal_cluster.items():
+        for icalo, simhit in caloinfo:
+            if icalo not in cluster_calo_fraction[clid]:
+                cluster_calo_fraction[clid][icalo] = 0.
+            cluster_calo_fraction[clid][icalo] += (simhit / calo_trueE[icalo])
+
+    print(cluster_calo_fraction)
+    cluster_calo_assoc = {}
+    for clid, calofrac in cluster_calo_fraction.items():
+        caloid = sorted(calofrac.items(), key=itemgetter(1), reverse=True)[0][0]
+        cluster_calo_assoc[clid] = caloid
+
     print "XTAL_cluster"
     pprint(xtal_cluster)
     print "XTAL_cluster_noise" 
@@ -72,7 +87,6 @@ for event in tree:
     pprint(xtal_calo)
     
 
-    
     # now the plotting
     mean_ieta_cl =   mean([ ieta for (ieta, iphi,_,_) in xtal_cluster.keys()]).round()
     mean_iphi_cl =   mean([ iphi for (ieta, iphi,_,_) in xtal_cluster.keys()]).round()
@@ -80,6 +94,7 @@ for event in tree:
 
     hratio_gamma1 = R.TH1F("eratio_g1", "", 100, -1, 2)
     hxtal_cluster       = R.TH2F("xtal_cluster", "xtal_cluster", 41, -20.5, +20.5, 41, -20.5, 20.5)
+    hxtal_cluster_assoc = R.TH2F("xtal_cluster_assoc", "xtal_cluster_assoc", 41, -20.5, +20.5, 41, -20.5, 20.5)
     hxtal_calo          = R.TH2F("xtal_calo", "xtal_caloparticle", 41, -20.5, +20.5, 41, -20.5, 20.5)
     contours = array("d",[1,2,3,4])
     hxtal_calo.SetContour(len(contours), contours )
@@ -88,11 +103,15 @@ for event in tree:
     hxtal_cluster.SetContour(len(contours), contours )
     hxtal_cluster.GetZaxis().SetRangeUser(contours[0], contours[-1])
     hxtal_cluster.GetZaxis().SetNdivisions(3, False)
+    hxtal_cluster_assoc.SetContour(len(contours), contours )
+    hxtal_cluster_assoc.GetZaxis().SetRangeUser(contours[0], contours[-1])
+    hxtal_cluster_assoc.GetZaxis().SetNdivisions(3, False)
    
     for (ieta, iphi, iclu, clhit), calohits in xtal_cluster.items():
         # print(ieta, iphi, iclu, clhit)
         # print(calohits)
         hxtal_cluster.Fill(ieta-mean_ieta_cl, iphi-mean_iphi_cl, iclu+1)
+        hxtal_cluster_assoc.Fill(ieta-mean_ieta_cl, iphi-mean_iphi_cl, cluster_calo_assoc[iclu]+1)
 
     for (ieta, iphi, icalo, simhit), clhits in xtal_calo.items():
         print(ieta, iphi, icalo)
@@ -105,6 +124,10 @@ for event in tree:
             
     c2 = R.TCanvas("c2", "", 800,800)
     hxtal_calo.Draw("COLZ")
-    c2.Draw()               
+    c2.Draw()
+
+    c3 = R.TCanvas("c3", "", 800,800)
+    hxtal_cluster_assoc.Draw("COLZ")
+    c3.Draw()                        
             
     raw_input("next?")
