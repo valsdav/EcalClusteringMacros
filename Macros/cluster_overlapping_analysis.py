@@ -59,12 +59,14 @@ hgamma1_dEta = R.TH1F("gamma1_deltaEta", "#Delta#eta #gamma1 (PF - true)", 50, -
 hgamma1_dPhi = R.TH1F("gamma1#DeltaPhi", "#Delta#phi #gamma1 (PF - true)", 50, -0.1,-0.1)
 hgamma1_dR   = R.TH1F("gamma1#DeltaR", "#DeltaR #gamma1 (PF - true)", 30, 0,0.03)
 
+h_en_merged =  R.TH2F("hgamma1_ediff_e2_merged", "Epf-Ecalo #gamma1 : En #gamma2 merged", 20,0, 200, 20, 0, 200)
+
 #overlap plot
 hgamma12_dEta = R.TH1F("gamma12#DeltaEta", "#Delta#eta PF #gamma1-2", 50, -1,1)
 hgamma12_dPhi = R.TH1F("gamma12#DeltaPhi", "#Delta#phi PF #gamma1-2", 50, -1,1)
 hgamma12_dR   = R.TH1F("gamma12#DeltaR", "#DeltaR PF #gamma1-2", 30, 0,0.1)
-hscan_Egamma1 = R.TProfile2D("scan_Egamma1", "En PF #gamma1 - E true #gamma1",15, 0.5, args.maxE, 15, 0, args.maxR)
-hscan_Egamma2 = R.TProfile2D("scan_Egamma2", "En PF #gamma2 - E true #gamma2",15, 0.5, args.maxE, 15, 0, args.maxR)
+hscan_Egamma1 = R.TProfile2D("scan_Egamma1", "En PF #gamma1 - E true #gamma1",15, 0.5, args.maxE, 40, 0, args.maxR)
+hscan_Egamma2 = R.TProfile2D("scan_Egamma2", "En PF #gamma2 - E true #gamma2",15, 0.5, args.maxE, 40, 0, args.maxR)
 hbadevent_dR    = R.TH1F("hbadevent_dR", "#DeltaR #gamma1-2 bad enents",  30, 0,args.maxR)
 nbadevents = {"noPfClusters":0, "noGamma1cluster": 0, "noGamma2cluster":0}
 
@@ -113,11 +115,11 @@ for iev, event in enumerate(tree):
             gamma2 = icalo
 
         # analysis cluster hit to get the cluster number
-        if debug: print "ieta iphi simhit [ pfcluster index , pfcluster hit]"
+        if debug >1: print "ieta iphi simhit [ pfcluster index , pfcluster hit]"
         for i, (ieta, iphi, simhit, clhit) in enumerate(zip(event.simHit_ieta[icalo],  event.simHit_iphi[icalo],
                         event.simHit_energy[icalo], event.pfClusterHit_energy[icalo])):
             if clhit.size() > 0:
-                if debug:   print ieta, iphi, "{:.5f}".format(simhit), [(hit.first, '{:.5f}'.format(hit.second)) for hit in clhit] 
+                if debug>1:   print ieta, iphi, "{:.5f}".format(simhit), [(hit.first, '{:.5f}'.format(hit.second)) for hit in clhit] 
                 for chit in clhit:
                     xtal_cluster[(ieta, iphi, chit.first, chit.second)].append((icalo, simhit))
                     xtal_calo[(ieta, iphi, icalo, simhit)].append((chit.first, chit.second))
@@ -185,23 +187,29 @@ for iev, event in enumerate(tree):
         else:
             # There is more than 1 cluster but or the two hare associated with the same
             # or one calo is missing
-            
-            # Get the list of calos ordered by fraction
-            calos_in_cluster = list(map(itemgetter(0), cluster_calo_assoc[all_calo_clusters[0]]))
-            if gamma1 in calos_in_cluster and gamma2 in calos_in_cluster:
-                #overlapping 
-                if debug: print "problem -> merged"
-                merged_event = True
-                if calos_in_cluster.index(gamma1) > calos_in_cluster.index(gamma2):
+            if gamma1 in sorted_calo_cluster_assoc:
+                # check if gamma2 is associated with the same cluster
+                if gamma2 in cluster_calo_assoc[sorted_calo_cluster_assoc[gamma1][0]]:
+                    if debug: print "problem -> merged"
+                    merged_event = True
                     # gamma1 has won
-                    cluster_energies[gamma1] = pfCluster_energy[all_calo_clusters[0]]
+                    cluster_energies[gamma1] = pfCluster_energy[sorted_calo_cluster_assoc[gamma1][0]]
                     cluster_energies[gamma2] = 0.
                 else:
-                    # gamma2 has won
-                    cluster_energies[gamma1] = 0.
-                    cluster_energies[gamma2] = pfCluster_energy[all_calo_clusters[0]]
+                    if debug: print("problem -> missing calo")
+                    good_event = False
+            if gamma2 in sorted_calo_cluster_assoc:
+                if gamma1 in cluster_calo_assoc[sorted_calo_cluster_assoc[gamma2][0]]:
+                    if debug: print "problem -> merged"
+                    merged_event = True
+                    # gamma2 has won but let's give the energy to gamma1 
+                    cluster_energies[gamma1] = pfCluster_energy[sorted_calo_cluster_assoc[gamma2][0]]
+                    cluster_energies[gamma2] = 0.
+                else:
+                    if debug: print("problem -> missing calo")
+                    good_event = False
             else:
-                if debug: print("problem -> missing calo")
+                if debug: print("problem -> missing both calo")
                 good_event = False
 
     elif len(all_calo_clusters) == 1:
@@ -214,9 +222,9 @@ for iev, event in enumerate(tree):
                 cluster_energies[gamma1] = pfCluster_energy[sorted_calo_cluster_assoc[gamma1][0]]
                 cluster_energies[gamma2] = 0.
             elif gamma2 in sorted_calo_cluster_assoc:
-                # gamma2 has won
-                cluster_energies[gamma1] = 0.
-                cluster_energies[gamma2] = pfCluster_energy[sorted_calo_cluster_assoc[gamma2][0]]
+                # gamma2 has won but give energy to gamma1
+                cluster_energies[gamma1] = pfCluster_energy[sorted_calo_cluster_assoc[gamma2][0]]
+                cluster_energies[gamma2] = 0.
         else:
             if debug:  print "missing calo"
             good_event = False
@@ -230,7 +238,7 @@ for iev, event in enumerate(tree):
                              calo_phi[gamma1], calo_eta[gamma1] ))
         continue
 
-    if debug: 
+    if debug> 1 or (debug==1 and merged_event) : 
         print("calo cluster assoc", sorted_calo_cluster_assoc)
         print("cluster calo assoc", cluster_calo_assoc)
         if good_event:
@@ -265,16 +273,21 @@ for iev, event in enumerate(tree):
         hgamma12_dEta.Fill(pfCluster_eta[ sorted_calo_cluster_assoc[gamma1][0] ] - pfCluster_eta[ sorted_calo_cluster_assoc[gamma2][0] ])
         hgamma12_dPhi.Fill(pfCluster_phi[ sorted_calo_cluster_assoc[gamma1][0] ] - pfCluster_phi[ sorted_calo_cluster_assoc[gamma2][0] ])
         hgamma12_dR.Fill( deltaR_clusters)
+        if deltaR_clusters < 0.001:
+            if debug:print("Really near clusters: ",cluster_energies)
     else:
+        h_en_merged.Fill(calo_simE[gamma2], cluster_energies[gamma1] - calo_simE[gamma1])
         hgamma12_dEta.Fill(0.)
         hgamma12_dPhi.Fill(0.)
         hgamma12_dR.Fill(0.)
         deltaR_clusters = 0.
-    
 
     # plot: x = gamma2 true energy, y = deltaR clusters, Z = pf energy - true energy
     hscan_Egamma1.Fill(calo_simE[gamma2],deltaR_clusters, cluster_energies[gamma1] - calo_simE[gamma1] )
     hscan_Egamma2.Fill(calo_simE[gamma2],deltaR_clusters, cluster_energies[gamma2] - calo_simE[gamma2] )
+    
+
+    
 
     if args.debug == 2 : raw_input("next?")
 
@@ -338,7 +351,7 @@ c10.Draw()
 c6 = R.TCanvas("c6", "", 1100, 800)
 c6.SetRightMargin(0.15)
 hscan_Egamma1.Draw("colz")
-hscan_Egamma1.GetZaxis().SetRangeUser(-15,15)
+hscan_Egamma1.GetZaxis().SetRangeUser(-20,200)
 hscan_Egamma1.SetTitle("En PF #gamma1 - E true #gamma1;E #gamma2;#DeltaR 1-2;#DeltaE (GeV)")
 c6.SaveAs(args.outputdir+ "/Overlapscan_gamma1_dEta_E{:.1f}_eta{:.1f}.png".format(args.energy, args.eta))
 c6.SaveAs(args.outputdir+ "/Overlapscan_gamma1_dEta_E{:.1f}_eta{:.1f}.C".format(args.energy, args.eta))
@@ -347,11 +360,19 @@ c6.Draw()
 c7 = R.TCanvas("c7", "", 1100, 800)
 c7.SetRightMargin(0.15)
 hscan_Egamma2.Draw("colz")
-hscan_Egamma2.GetZaxis().SetRangeUser(-15,15)
+hscan_Egamma2.GetZaxis().SetRangeUser(-100,200)
 hscan_Egamma2.SetTitle("En PF #gamma2 - E true #gamma2;E #gamma2;#DeltaR 1-2;#DeltaE (GeV)")
 c7.SaveAs(args.outputdir+ "/Overlapscan_gamma2_dEta_E{:.1f}_eta{:.1f}.png".format(args.energy, args.eta))
 c7.SaveAs(args.outputdir+ "/Overlapscan_gamma2_dEta_E{:.1f}_eta{:.1f}.C".format(args.energy, args.eta))
-c7.Draw()   
+c7.Draw()  
+
+c8 = R.TCanvas("c8", "", 1100, 800)
+c8.SetRightMargin(0.15)
+h_en_merged.Draw("colz")
+h_en_merged.SetTitle("En PF - calo #gamma1 : En #gamma2;E #gamma2;#DeltaE #gamma1;#DeltaE (GeV)")
+c8.SaveAs(args.outputdir+ "/DEn1_En2_merged{:.1f}_eta{:.1f}.png".format(args.energy, args.eta))
+c8.SaveAs(args.outputdir+ "/DEn1_En2_merged{:.1f}_eta{:.1f}.C".format(args.energy, args.eta))
+c8.Draw() 
 
 # c8 = R.TCanvas("c8")
 # hbadevent_dR.Draw("hist")
