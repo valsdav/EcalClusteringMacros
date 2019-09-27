@@ -95,17 +95,13 @@ def sim_rechit_fractions_strategy(xtal_cluster, xtal_calo, event):
     calo_simE = event.caloParticle_simEnergy
     pfCluster_energy = event.pfCluster_energy
 
-    ####################################################
-   
-    #######################################################
     cluster_calo_fraction = defaultdict(dict)
     for (ieta,iphi,clid, clhit), (caloinfo) in xtal_cluster.items():
         for icalo, simhit in caloinfo:
             if icalo not in cluster_calo_fraction[clid]:
                 cluster_calo_fraction[clid][icalo] = 0.
-            cluster_calo_fraction[clid][icalo] += abs(  (simhit / calo_simE[icalo])-(clhit / pfCluster_energy[clid]))
-            
-    
+            cluster_calo_fraction[clid][icalo] += abs( (simhit / calo_simE[icalo])-(clhit / pfCluster_energy[clid]) )
+               
     calo_cluster_assoc = defaultdict(list)
     cluster_calo_assoc = {}
 
@@ -127,9 +123,48 @@ def sim_rechit_fractions_strategy(xtal_cluster, xtal_calo, event):
     return cluster_calo_assoc, sorted_calo_cluster_assoc
 
 
+
+def sim_rechit_global_fraction_strategy(xtal_cluster, xtal_calo, event):
+    calo_simE = event.caloParticle_simEnergy
+    pfCluster_energy = event.pfCluster_energy
+
+    cluster_calo_fraction = defaultdict(dict)
+    for (ieta,iphi,clid, clhit), (caloinfo) in xtal_cluster.items():
+        for icalo, simhit in caloinfo:
+            if icalo not in cluster_calo_fraction[clid]:
+                cluster_calo_fraction[clid][icalo] = 0.
+            # no absolute value! We will calculate the global one
+            cluster_calo_fraction[clid][icalo] +=  (simhit / calo_simE[icalo])-(clhit / pfCluster_energy[clid])
+            
+    
+    calo_cluster_assoc = defaultdict(list)
+    cluster_calo_assoc = {}
+
+    for clid, calofrac in cluster_calo_fraction.items():
+        # order caloparticle. The closer to 0 the better
+        # Calculate not the absolute value of the fraction
+        caloids =  list(sorted(map (lambda (k,v): (k, abs(v)), calofrac.items()), key=itemgetter(1)))
+        # Associate to che cluster the list of caloparticles ordered by fraction 
+        cluster_calo_assoc[clid] = caloids
+        # save for the calocluster in the caloparticle if it is the one with more fraction
+        # This is necessary in case one caloparticle is linked with more than one cluster
+        calo_cluster_assoc[caloids[0][0]].append((clid, caloids[0][1] ))
+        
+    # Now sort the clusters associated to a caloparticle with the fraction (closer to 0 the better)
+    sorted_calo_cluster_assoc = {}
+    for caloid, clinfo in calo_cluster_assoc.items():
+        sorted_calo_cluster_assoc[caloid] = list(map(itemgetter(0), sorted(clinfo, key=itemgetter(1))))
+
+    # Return cluster:caloparticle and  caloparticle_cluster maps
+    return cluster_calo_assoc, sorted_calo_cluster_assoc
+
+####################################################################################
+
+
 strategies = {
     "sim_fraction": sim_fraction_stragegy,
-    "sim_rechit_fractions": sim_rechit_fractions_strategy
+    "sim_rechit_fractions": sim_rechit_fractions_strategy,
+    "sim_rechit_global_fraction": sim_rechit_global_fraction_strategy
 }
 
 
@@ -138,4 +173,4 @@ def get_all_associations(event, debug=False):
     assoc = {}
     for strategy, f in strategies.items():
         assoc[strategy] = f(xtal_cluster, xtal_calo, event)
-    return assoc
+    return assoc, (xtal_cluster, xtal_calo, xtal_cluster_noise)
