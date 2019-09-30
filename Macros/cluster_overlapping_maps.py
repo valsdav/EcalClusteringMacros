@@ -40,7 +40,7 @@ for event in tree:
     pfCluster_energy = event.pfCluster_energy
     
     # Get all associations
-    assoc, (xtal_cluster, xtal_calo, xtal_cluster_noise) = association_strategies.get_all_associations(event, debug=True)
+    assoc, (xtal_cluster, xtal_calo, xtal_cluster_noise) = association_strategies.get_all_associations(event, cluster_type="pfCluster",debug=True)
 
 
     all_calo_clusters = list(set(map( itemgetter(2), xtal_cluster.keys())))
