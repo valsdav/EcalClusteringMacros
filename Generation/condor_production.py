@@ -16,9 +16,10 @@ parser = argparse.ArgumentParser()
 #parser.add_argument("-f", "--files", type=str, help="input file", required=True)
 parser.add_argument("--energy", type=float,nargs='+', help="energies", required=True)
 parser.add_argument("--eta", type=float,nargs='+', help="etas", required=True)
-parser.add_argument("-n", "--nevents", type=int, help="n events", required=True)
+parser.add_argument("-n", "--nevents", type=int, help="N events for each eta and energy", required=True)
+parser.add_argument("-s", "--split", type=int, help="Divide N events in S jobs", default=10)
 parser.add_argument("-o", "--outputdir", type=str, help="Outputdir", required=True)
-parser.add_argument("-c", "--cmssw", type=str, help="CMSSW tar", required=True)
+parser.add_argument("-c", "--cmssw", type=str, help="Absolute path to CMSSW release", required=True)
 parser.add_argument("-q", "--queue", type=str, help="Condor queue", default="longlunch", required=True)
 parser.add_argument("-e", "--eos", type=str, default="user", help="EOS instance user/cms", required=False)
 parser.add_argument("--redo", action="store_true", default=False, help="Redo all files")
@@ -74,20 +75,16 @@ cmsRun step1_CloseEcal_cfi_GEN_SIM.py jobid=$JOBID  maxEvents=$NEVENTS \
 
 echo -e ">>> STEP2";
 cmsRun step2_DIGI_L1_DIGI2RAW_HLT.py
- 
-#xrdcp --nopbar step2.root root://eos{eosinstance}.cern.ch/${OUTPUTFILE}_step2.root;
 
 echo -e ">>> STEP3";
 cmsRun step3_RAW2DIGI_L1Reco_RECO_RECOSIM_EI_PAT_VALIDATION_DQM.py
 
 xrdcp --nopbar step3.root root://eos{eosinstance}.cern.ch/${OUTPUTFILE}_step3.root;
 
-
 echo -e "Running dumper.."
 
 cd ..
 cmsRun python/RecoSimDumper_cfg.py inputFile=test/step3.root outputFile=output_${JOBID}.root
-
 
 echo -e "Copying result to: $OUTPUTFILE";
 xrdcp -f --nopbar  output_${JOBID}.root root://eos{eosinstance}.cern.ch/${OUTPUTFILE}.root;
@@ -122,21 +119,23 @@ def getR_Z(eta):
     return R, Z
 
 jobid = 0
+njobs = args.nevents // args.split
+
 for en in args.energy:
     for eta in args.eta:
         R,Z = getR_Z(eta)
         print("Eta: {} | R: {} | Z: {}".format(eta,R,Z))
-
-        jobid +=1
-        outputfile = args.outputdir + "/cluster_en{:.1f}_eta{:.1f}".format(en,eta)
-    
-        if not args.redo and outputfile+".root" in outputfiles:
-            continue
-        arguments.append("{} {} {} {} {} {} {} {} {} {} {} {} {}".format(
-            jobid,outputfile,args.nevents, en-0.0001,en+0.0001,
-            Z-0.0001,Z+0.0001,R-0.0001, R+0.0001,
-            random.randint(1,10000),random.randint(1,10000),
-            random.randint(1,10000),random.randint(1,10000)))
+        for ijob in range(njobs):
+            jobid +=1
+            outputfile = args.outputdir + "/cluster_en{:.1f}_eta{:.1f}_job{}".format(en,eta, jobid)
+        
+            if not args.redo and outputfile+".root" in outputfiles:
+                continue
+            arguments.append("{} {} {} {} {} {} {} {} {} {} {} {} {}".format(
+                jobid,outputfile,args.nevents, en-0.0001,en+0.0001,
+                Z-0.0001,Z+0.0001,R-0.0001, R+0.0001,
+                random.randint(1,10000),random.randint(1,10000),
+                random.randint(1,10000),random.randint(1,10000)))
 
 print("Njobs: ", len(arguments))
     

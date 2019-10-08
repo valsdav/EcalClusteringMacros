@@ -3,10 +3,11 @@
 To generate two-photons events use *condor_production.py* script. 
 It will generate condor jobs to run all the steps of the simulation and the dumper. 
 
+
 ```
-usage: condor_production.py [-h] --energy ENERGY [ENERGY ...] --eta ETA
-                            [ETA ...] -n NEVENTS -o OUTPUTDIR -c CMSSW -q
-                            QUEUE [-e EOS] [--redo]
+usage:condor_production.py [-h] --energy ENERGY [ENERGY ...] --eta ETA
+                            [ETA ...] -n NEVENTS [-s SPLIT] -o OUTPUTDIR -c
+                            CMSSW -q QUEUE [-e EOS] [--redo]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -14,18 +15,34 @@ optional arguments:
                         energies
   --eta ETA [ETA ...]   etas
   -n NEVENTS, --nevents NEVENTS
-                        n events
+                        N events for each configuration of eta and energy
+  -s SPLIT, --split SPLIT
+                        Divide N events in S jobs
   -o OUTPUTDIR, --outputdir OUTPUTDIR
                         Outputdir
   -c CMSSW, --cmssw CMSSW
-                        CMSSW tar
+                        Absolute path to CMSSW release
   -q QUEUE, --queue QUEUE
                         Condor queue
   -e EOS, --eos EOS     EOS instance user/cms
   --redo                Redo all files
+
 ```
+Example:
 
-
+```
+python condor_production.py --energy 10. 50. 100. --eta 1.8 2.2 2.3  -o outputdir_on_eos -c /afs/cern.ch/work/d/dvalsecc/private/CMSSW_10_6_0 -q tomorrow -n 1000000 -s 100
+Eta: 1.8 | R: 107.74344717871149 | Z: 317
+Eta: 2.2 | R: 71.12239623501772 | Z: 317
+Eta: 2.3 | R: 64.20953057483585 | Z: 317
+Eta: 1.8 | R: 107.74344717871149 | Z: 317
+Eta: 2.2 | R: 71.12239623501772 | Z: 317
+Eta: 2.3 | R: 64.20953057483585 | Z: 317
+Eta: 1.8 | R: 107.74344717871149 | Z: 317
+Eta: 2.2 | R: 71.12239623501772 | Z: 317
+Eta: 2.3 | R: 64.20953057483585 | Z: 317
+Njobs:  90000
+```
 ## Run only the dumper
 To run the dumper on reco files (step3.root) from a previous production, use the script *condor_production_onlydumper.py*.
 
