@@ -3,7 +3,7 @@ import sys
 import os
 from tqdm import tqdm
 from collections import defaultdict
-from math import cosh
+from math import cosh, sqrt
 from itertools import islice, chain
 from numpy import mean
 from operator import itemgetter, attrgetter
@@ -57,14 +57,15 @@ hgamma2_Eratio = R.TH1F("hgamma2_Eratio", "Epf/Ecalo #gamma2", 100, 0.7, 1.3)
 
 hgamma1_dEta = R.TH1F("gamma1_deltaEta", "#Delta#eta #gamma1 (PF - true)", 50, -0.2,-0.2)
 hgamma1_dPhi = R.TH1F("gamma1#DeltaPhi", "#Delta#phi #gamma1 (PF - true)", 50, -0.1,-0.1)
-hgamma1_dR   = R.TH1F("gamma1#DeltaR", "#DeltaR #gamma1 (PF - true)", 30, 0,0.03)
+hgamma1_dR   = R.TH1F("gamma1#DeltaR", "#DeltaR #gamma1 (PF - true)", 30, 0,args.maxR)
 
 h_en_merged =  R.TH2F("hgamma1_ediff_e2_merged", "Epf-Ecalo #gamma1 : En #gamma2 merged", 20,0, 200, 20, 0, 200)
+h_R_merged = R.TH1F("hdeltaR_merged", "#DeltaR of caloparticles for merged clusters", 30, 0, args.maxR)
 
 #overlap plot
 hgamma12_dEta = R.TH1F("gamma12#DeltaEta", "#Delta#eta PF #gamma1-2", 50, -1,1)
 hgamma12_dPhi = R.TH1F("gamma12#DeltaPhi", "#Delta#phi PF #gamma1-2", 50, -1,1)
-hgamma12_dR   = R.TH1F("gamma12#DeltaR", "#DeltaR PF #gamma1-2", 30, 0,0.1)
+hgamma12_dR   = R.TH1F("gamma12#DeltaR", "#DeltaR PF #gamma1-2", 30, 0,0.5)
 hscan_Egamma1 = R.TProfile2D("scan_Egamma1", "En PF #gamma1 - E true #gamma1",15, 0.5, args.maxE, 40, 0, args.maxR)
 hscan_Egamma2 = R.TProfile2D("scan_Egamma2", "En PF #gamma2 - E true #gamma2",15, 0.5, args.maxE, 40, 0, args.maxR)
 hbadevent_dR    = R.TH1F("hbadevent_dR", "#DeltaR #gamma1-2 bad enents",  30, 0,args.maxR)
@@ -78,7 +79,7 @@ def DeltaR(phi1, eta1, phi2, eta2):
         if dphi < -R.TMath.Pi(): dphi += 2*R.TMath.Pi()
         deta = eta1 - eta2
         deltaR = (deta*deta) + (dphi*dphi)
-        return deltaR
+        return sqrt(deltaR)
 
 totevents = 0
 
@@ -281,6 +282,8 @@ for iev, event in enumerate(tree):
         hgamma12_dPhi.Fill(0.)
         hgamma12_dR.Fill(0.)
         deltaR_clusters = 0.
+        deltaR_calo = DeltaR(calo_phi[gamma1], calo_eta[gamma1], calo_phi[gamma2], calo_eta[gamma2] )
+        h_R_merged.Fill(deltaR_calo)
 
     # plot: x = gamma2 true energy, y = deltaR clusters, Z = pf energy - true energy
     hscan_Egamma1.Fill(calo_simE[gamma2],deltaR_clusters, cluster_energies[gamma1] - calo_simE[gamma1] )
@@ -347,6 +350,13 @@ hgamma12_dR.GetXaxis().SetTitle("#DeltaR")
 c10.SaveAs(args.outputdir+ "/Gamma1-2_dR_E{:.1f}_eta{:.1f}.png".format(args.energy, args.eta))
 c10.SaveAs(args.outputdir+ "/Gamma1-2_dR_E{:.1f}_eta{:.1f}.C".format(args.energy, args.eta))
 c10.Draw() 
+
+c11 = R.TCanvas("c11", "", 800, 600)
+h_R_merged.Draw("hist")
+h_R_merged.GetXaxis().SetTitle("#DeltaR caloparticles")
+c11.SaveAs(args.outputdir+ "/dRcalo_mergedcl_E{:.1f}_eta{:.1f}.png".format(args.energy, args.eta))
+c11.SaveAs(args.outputdir+ "/dRcalo_mergedcl_E{:.1f}_eta{:.1f}.C".format(args.energy, args.eta))
+c11.Draw() 
 
 c6 = R.TCanvas("c6", "", 1100, 800)
 c6.SetRightMargin(0.15)
