@@ -1,3 +1,4 @@
+.sys*
 *.err
 *.out
 *.log

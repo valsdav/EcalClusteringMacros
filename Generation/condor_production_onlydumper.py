@@ -84,12 +84,12 @@ if not os.path.exists(args.outputdir):
     os.makedirs(args.outputdir)
 
 outputfiles = [args.outputdir +"/"+f for f in os.listdir(args.outputdir)]
-inputfiles = [ f for f in os.listdir(args.inputdir) if "_step3_" in f]
+inputfiles = [ f for f in os.listdir(args.inputdir)]
 
 jobid = 0
 for ifile in inputfiles:
     jobid +=1
-    outputfile = args.outputdir + "/" + ifile.replace("_step3_", "_")
+    outputfile = args.outputdir + "/" + ifile[:-5] + "_output.root"
     inputfile = args.inputdir + "/" + ifile
 
     if not args.redo and outputfile in outputfiles:

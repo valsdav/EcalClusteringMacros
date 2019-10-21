@@ -4,6 +4,7 @@ import sys
 import os
 from tqdm import tqdm
 from collections import defaultdict
+from operator import itemgetter
 from math import cosh
 from itertools import islice, chain
 from numpy import mean
@@ -19,7 +20,7 @@ R.gStyle.SetOptFit(1111)
 R.gStyle.SetPalette(R.kLightTemperature)
 
 '''
-This script analyse the pfclusters and caloparticle and perform
+This script analyse the superClusters and caloparticle and perform
 an association based on the caloparticle simEnergy fraction. 
 '''
 
@@ -67,11 +68,16 @@ def get_etaphi_clusters(clusters, xtal_cluster, xtal_cluster_noise):
         mean_eta += eta*clhit 
         mean_phi += phi*clhit
         sum_w += clhit
+
     for (eta, phi, clid, clhit) in filter( lambda (ieta,iphi,clid,clhit): clid in clusters, xtal_cluster_noise):
         mean_eta += eta*clhit
         mean_phi += phi*clhit
         sum_w += clhit
-    return mean_eta / sum_w, mean_phi / sum_w
+
+    if len(clusters) ==0:
+        return -1, -1
+    else:
+        return mean_eta / sum_w, mean_phi / sum_w
 
 totevents = 0
 
@@ -86,18 +92,19 @@ for strategy in association_strategies.strategies.keys():
     h_encluster = R.TH1F("energy_cluster_{}".format(strategy), "", 40, 0,400)
     h_ereco_etrue_tot = R.TH1F("ereco_etrue_tot_{}".format(strategy), "", 25, 0, 1.5)
     h_ereco_etrue = R.TH1F("ereco_etrue_{}".format(strategy), "", 25, 0, 1.5)
+
     h_ereco_etrue_EB_tot = R.TH1F("ereco_etrue__EB_tot_{}".format(strategy), "", 25, 0, 1.5)
     h_ereco_etrue_EB = R.TH1F("ereco_etrue_EB_{}".format(strategy), "", 25, 0, 1.5)
     h_ereco_etrue_EE_tot = R.TH1F("ereco_etrue_EE_tot_{}".format(strategy), "", 25, 0, 1.5)
     h_ereco_etrue_EE = R.TH1F("ereco_etrue_EE_{}".format(strategy), "", 25, 0, 1.5)
 
-    h_nxtal_clu = R.TH1F("nxtals_clu_{}".format(strategy), "", 15, 0, 15)
+    h_nxtal_clu = R.TH1F("nxtals_clu_{}".format(strategy), "", 40, 0, 40)
     h_deltaR_recotrue = R.TH1F("deltaR_recotrue_{}".format(strategy), "", 30, 0, 2)
     h_deltaR_recotrue_tot = R.TH1F("deltaR_recotrue_tot_{}".format(strategy), "", 30, 0, 2)
 
     h_etaratio = R.TH1F("etaratio_{}".format(strategy), "", 40, -2, 2)
     h_etaratio_tot = R.TH1F("etaratio_tot_{}".format(strategy), "", 40, -2, 2)
-    h_ncl = R.TH1F("ncluster_{}".format(strategy), "", 15, 0, 15)
+    h_ncl = R.TH1F("ncluster_{}".format(strategy), "", 4, 0, 4)
     h2_ncl_eta = R.TH2F("ncl_eta_{}".format(strategy), "", 20, 0, 3,20, 1, 21)
     h2_phireco_phitrue = R.TH2F("phireco_phitrue{}".format(strategy),"", 40, -3.14,3.14, 40, -3.14,3.14)
     h2_phireco_phitrue_tot = R.TH2F("phireco_phitrue_tot_{}".format(strategy),"", 40, -3.14,3.14, 40, -3.14,3.14)
@@ -120,50 +127,50 @@ for strategy in association_strategies.strategies.keys():
     e_eff_eta = R.TEfficiency("eff_eta_{}".format(strategy), "", 30, -3, 3)
     e_eff_pt = R.TEfficiency("eff_pt_{}".format(strategy), "", 25, 1, 100)
     e2_eff_eta_pt = R.TEfficiency("eff_eta_pt_{}".format(strategy), "", 25, -3, 3, 5, 1, 100)
-
+    
     #######################
     ### Titles
-    
+
     h_etacalo.SetTitle("#eta of calo particles; #eta calo")
-    h_etacluster.SetTitle("#eta of pfClusters; #eta pfCluster")
+    h_etacluster.SetTitle("#eta of superClusters; #eta superCluster")
     h_encalo.SetTitle("Energy of calo particles; Energy calo (GeV)")
-    h_encluster.SetTitle("Energy of pfClusters; Energy pfCluster (GeV)")
+    h_encluster.SetTitle("Energy of superClusters; Energy superCluster (GeV)")
     h_ereco_etrue.SetTitle("E reco/E true;E_reco/E_true;")
-    h_ereco_etrue_tot.SetTitle("E reco (all pfClusters)/E true;E_reco (all pfCl.)/E_true;")
+    h_ereco_etrue_tot.SetTitle("E reco (all superClusters)/E true;E_reco (all sCl.)/E_true;")
     h_ereco_etrue_EB.SetTitle("E reco/E true (EB);E_reco/E_true;")
-    h_ereco_etrue_EB_tot.SetTitle("E reco (all pfClusters)/E true (EB);E_reco (all pfCl.)/E_true;")
+    h_ereco_etrue_EB_tot.SetTitle("E reco (all superClusters)/E true (EB);E_reco (all sCl.)/E_true;")
     h_ereco_etrue_EE.SetTitle("E reco/E true (EE);E_reco/E_true;")
-    h_ereco_etrue_EE_tot.SetTitle("E reco (all pfClusters)/E true (EE);E_reco (all pfCl.)/E_true;")
+    h_ereco_etrue_EE_tot.SetTitle("E reco (all superClusters)/E true (EE);E_reco (all sCl.)/E_true;")
     h_etaratio.SetTitle("|#eta reco/ #eta true|;|#eta_reco/#eta_true|")
     h_etaratio_tot.SetTitle("|Mean #eta reco / #eta true|;|Mean #eta_reco/#eta_true|")
     h_ncl.SetTitle("N Clusters per caloparticle;N Clusters;")
     h_nxtal_clu.SetTitle("N xtals in cluster; N. xtals")
-    h_deltaR_recotrue.SetTitle("#Delta R Calo-pfCluster; #DeltaR")
-    h_deltaR_recotrue_tot.SetTitle("#Delta R Calo- All associated pfClusters; #DeltaR")
+    h_deltaR_recotrue.SetTitle("#Delta R Calo-superCluster; #DeltaR")
+    h_deltaR_recotrue_tot.SetTitle("#Delta R Calo- All associated superClusters; #DeltaR")
     h2_ncl_eta.SetTitle("N. clusters: eta gen (algo:{});eta calo;N. clusters".format(strategy))
     
-    h2_phireco_phitrue.SetTitle("Phi calo: Phi pfCluster (algo: {}); Phi calo; Phi pfCluster".format(strategy))
-    h2_phireco_phitrue_tot.SetTitle("Phi calo: Mean Phi pfClusters (algo: {}); Phi calo; Mean Phi pfClusters".format(strategy))
-    h2_etareco_etatrue.SetTitle("Eta calo:Eta pfCluster (algo:{});Eta calo;Eta pfCluster".format(strategy))
-    h2_etaratio_etacalo.SetTitle("Eta calo/eta pfCluster (algo:{}): Eta calo;Eta calo / eta pfCluster;Eta calo".format(strategy))
-    h2_etaratio_encalo.SetTitle("Eta calo/eta pfCluster (algo:{}): Energy calo (GeV);Eta calo / eta pfCluster;Energy calo [GeV]".format(strategy))
-    h2_enratio_etacalo.SetTitle("En calo/En pfCluster (algo:{}): Eta calo;En calo / En pfCluster;Eta calo".format(strategy))
-    h2_enratio_encalo.SetTitle("En calo/En pfCluster (algo:{}): Energy calo (GeV);En calo / En pfCluster;Energy calo [GeV]".format(strategy))
-    h2_deltaR_encalo.SetTitle("#Delta R Calo-pfCluster (algo:{}): Energy calo;#Delta R calo-cluster;Energy calo (GeV)".format(strategy))
-    h2_deltaR_etacalo.SetTitle("#Delta R Calo-pfCluster (algo:{}): Eta calo;#Delta R calo-cluster;Eta calo".format(strategy))
+    h2_phireco_phitrue.SetTitle("Phi calo: Phi superCluster (algo: {}); Phi calo; Phi superCluster".format(strategy))
+    h2_phireco_phitrue_tot.SetTitle("Phi calo: Mean Phi superClusters (algo: {}); Phi calo; Mean Phi superClusters".format(strategy))
+    h2_etareco_etatrue.SetTitle("Eta calo:Eta superCluster (algo:{});Eta calo;Eta superCluster".format(strategy))
+    h2_etaratio_etacalo.SetTitle("Eta calo/eta superCluster (algo:{}): Eta calo;Eta calo / eta superCluster;Eta calo".format(strategy))
+    h2_etaratio_encalo.SetTitle("Eta calo/eta superCluster (algo:{}): Energy calo (GeV);Eta calo / eta superCluster;Energy calo [GeV]".format(strategy))
+    h2_enratio_etacalo.SetTitle("En calo/En superCluster (algo:{}): Eta calo;En calo / En superCluster;Eta calo".format(strategy))
+    h2_enratio_encalo.SetTitle("En calo/En superCluster (algo:{}): Energy calo (GeV);En calo / En superCluster;Energy calo [GeV]".format(strategy))
+    h2_deltaR_encalo.SetTitle("#Delta R Calo-superCluster (algo:{}): Energy calo;#Delta R calo-cluster;Energy calo (GeV)".format(strategy))
+    h2_deltaR_etacalo.SetTitle("#Delta R Calo-superCluster (algo:{}): Eta calo;#Delta R calo-cluster;Eta calo".format(strategy))
 
-    h2_etareco_etatrue_tot.SetTitle("Eta calo:Mean Eta pfClusters (algo:{});Eta calo;Mean Eta pfCluster".format(strategy))
-    h2_etaratio_etacalo_tot.SetTitle("Eta calo/Mean Eta pfClusters (algo:{}): Eta calo;Eta calo /Mean Eta pfCluster;Eta calo".format(strategy))
-    h2_etaratio_encalo_tot.SetTitle("Eta calo/Mean Eta pfClusters (algo:{}): Energy calo;Eta calo /Mean Eta pfCluster;Energy calo [GeV]".format(strategy))
-    h2_enratio_etacalo_tot.SetTitle("En calo/Tot En pfClusters (algo:{}): Eta calo;En calo / Tot En pfCluster;Eta calo".format(strategy))
-    h2_enratio_encalo_tot.SetTitle("En calo/Tot En pfClusters (algo:{}): Energy calo;En calo /Tot En pfCluster;Energy calo [GeV]".format(strategy))
-    h2_deltaR_encalo_tot.SetTitle("#Delta R Calo- All pfClusters (algo:{}): Energy calo;#Delta R calo- all clusters;Energy calo (GeV)".format(strategy))
-    h2_deltaR_etacalo_tot.SetTitle("#Delta R Calo- All pfClusters (algo:{}): Eta calo;#Delta R calo- all clusters;Eta calo (GeV)".format(strategy))
+    h2_etareco_etatrue_tot.SetTitle("Eta calo:Mean Eta superClusters (algo:{});Eta calo;Mean Eta superCluster".format(strategy))
+    h2_etaratio_etacalo_tot.SetTitle("Eta calo/Mean Eta superClusters (algo:{}): Eta calo;Eta calo /Mean Eta superCluster;Eta calo".format(strategy))
+    h2_etaratio_encalo_tot.SetTitle("Eta calo/Mean Eta superClusters (algo:{}): Energy calo;Eta calo /Mean Eta superCluster;Energy calo [GeV]".format(strategy))
+    h2_enratio_etacalo_tot.SetTitle("En calo/Tot En superClusters (algo:{}): Eta calo;En calo / Tot En superCluster;Eta calo".format(strategy))
+    h2_enratio_encalo_tot.SetTitle("En calo/Tot En superClusters (algo:{}): Energy calo;En calo /Tot En superCluster;Energy calo [GeV]".format(strategy))
+    h2_deltaR_encalo_tot.SetTitle("#Delta R Calo- All superClusters (algo:{}): Energy calo;#Delta R calo- all clusters;Energy calo (GeV)".format(strategy))
+    h2_deltaR_etacalo_tot.SetTitle("#Delta R Calo- All superClusters (algo:{}): Eta calo;#Delta R calo- all clusters;Eta calo (GeV)".format(strategy))
 
-    e_eff_eta.SetTitle("Eff. pfCluster (algo:{});#eta calo".format(strategy))
-    e_eff_eta.SetTitle("Eff. pfCluster (algo:{});Pt calo".format(strategy))
-    e2_eff_eta_pt.SetTitle("Eff. pfCluster (algo:{});#eta calo; Pt calo".format(strategy))
-    
+    e_eff_eta.SetTitle("Eff. SuperCluster (algo:{});#eta calo".format(strategy))
+    e_eff_pt.SetTitle("Eff. SuperCluster (algo:{});Pt calo".format(strategy))
+    e2_eff_eta_pt.SetTitle("Eff. SuperCluster (algo:{});#eta calo; Pt calo".format(strategy))
+
     histos["etacalo"][strategy] = h_etacalo
     histos["etacluster"][strategy] = h_etacluster
     histos["encalo"][strategy] = h_encalo
@@ -205,7 +212,6 @@ for strategy in association_strategies.strategies.keys():
     effplots["eff_pt"][strategy] = e_eff_pt
     effplots["eff2_eta_pt"][strategy] = e2_eff_eta_pt
 
-
 for iev, event in enumerate(tree):
     totevents+=1
     if not args.batch: pbar.update()
@@ -213,59 +219,53 @@ for iev, event in enumerate(tree):
 
     ncalo = event.caloParticle_simEnergy.size()
     calo_simE = event.caloParticle_simEnergy
-    calo_pt = event.caloParticle_simPt
-    calo_simE = event.caloParticle_simEnergy
     calo_eta = event.caloParticle_simEta
     calo_phi = event.caloParticle_simPhi
+    calo_pt = event.caloParticle_simPt
     calo_geneta = event.caloParticle_genEta
     calo_genphi = event.caloParticle_genPhi
-    pfCluster_energy = event.pfCluster_energy
-    pfCluster_eta = event.pfCluster_eta
-    pfCluster_phi = event.pfCluster_phi
+    superCluster_energy = event.superCluster_energy
+    superCluster_eta = event.superCluster_eta
+    superCluster_phi = event.superCluster_phi
     gen_eta = event.genParticle_eta
     gen_phi = event.genParticle_phi
     gen_pt = event.genParticle_pt
     
     assoc, (xtal_cluster, xtal_calo, xtal_cluster_noise) = \
-            association_strategies.get_all_associations(event, cluster_type="pfCluster",debug=debug)
+            association_strategies.get_all_associations(event, cluster_type="superCluster",debug=debug)
     if debug: print(assoc)
     
     printout = False
     for strategy, (cluster_calo_assoc, calo_cluster_assoc) in assoc.items():
-        has_clusters_calo = {}
         for calo, clusters in calo_cluster_assoc.items():
             trueE = calo_simE[calo]
             histos["encalo"][strategy].Fill(trueE)
             histos["etacalo"][strategy].Fill(calo_eta[calo])
             recoE = 0.
-
-            # Check efficiency
-            hasCluster = False
             
+            if debug: print("calo ", calo, strategy, clusters)
             for clid in clusters:
-                deltaR_clcalo = DeltaR(calo_phi[calo], calo_eta[calo], pfCluster_phi[clid], pfCluster_eta[clid])
-                recoE += pfCluster_energy[clid]
-                etaratio = pfCluster_eta[clid] / calo_eta[calo]
-                enratio = pfCluster_energy[clid] / calo_simE[calo]
-                
-                if enratio > 0.4 and enratio < 1.4:
-                    hasCluster = True
+                deltaR_clcalo = DeltaR(calo_phi[calo], calo_eta[calo], superCluster_phi[clid], superCluster_eta[clid])
+                recoE += superCluster_energy[clid]
+                etaratio = superCluster_eta[clid] / calo_eta[calo]
+                enratio = superCluster_energy[clid] / calo_simE[calo]
 
                 histos["nxtal_clu"][strategy].Fill(len(filter(lambda (ieta,iphi,icl,clhit):icl==clid, xtal_cluster.keys())))
-                histos["etacluster"][strategy].Fill(pfCluster_eta[clid])
-                histos["encluster"][strategy].Fill(pfCluster_energy[clid])
+                histos["etacluster"][strategy].Fill(superCluster_eta[clid])
+                histos["encluster"][strategy].Fill(superCluster_energy[clid])
                 histos["deltaR_recotrue"][strategy].Fill(deltaR_clcalo)
 
-                histos["ereco_etrue"][strategy].Fill(pfCluster_energy[clid]/trueE)
-                if abs(pfCluster_eta[clid]) > 1.5:
-                    histos["ereco_etrue_EE"][strategy].Fill(pfCluster_energy[clid]/trueE)
+                histos["ereco_etrue"][strategy].Fill(superCluster_energy[clid]/trueE)
+
+                if abs(superCluster_eta[clid]) > 1.5:
+                    histos["ereco_etrue_EE"][strategy].Fill(superCluster_energy[clid]/trueE)
                 else:
-                    histos["ereco_etrue_EB"][strategy].Fill(pfCluster_energy[clid]/trueE)
+                    histos["ereco_etrue_EB"][strategy].Fill(superCluster_energy[clid]/trueE)
 
                 histos["etaratio"][strategy].Fill(etaratio)
                 # plots by single cluster
-                histos2d["etareco_etatrue"][strategy].Fill(calo_eta[calo],pfCluster_eta[clid])
-                histos2d["phireco_phitrue"][strategy].Fill(calo_phi[calo],pfCluster_phi[clid])
+                histos2d["etareco_etatrue"][strategy].Fill(calo_eta[calo],superCluster_eta[clid])
+                histos2d["phireco_phitrue"][strategy].Fill(calo_phi[calo],superCluster_phi[clid])
 
                 histos2d["etaratio_etacalo"][strategy].Fill(etaratio, calo_eta[calo])
                 histos2d["etaratio_encalo"][strategy].Fill(etaratio, trueE)
@@ -274,54 +274,52 @@ for iev, event in enumerate(tree):
                 histos2d["deltaR_encalo"][strategy].Fill(deltaR_clcalo, calo_simE[calo])
                 histos2d["deltaR_etacalo"][strategy].Fill(deltaR_clcalo, calo_eta[calo])
 
-            # Save if the calo has clusters that pass the efficiency criteria
-            has_clusters_calo[calo] = hasCluster
-
             # plot with tot cluter
-            mean_eta_cls, mean_phi_cls = get_etaphi_clusters(clusters, xtal_cluster, xtal_cluster_noise)
-            etaratio_tot = mean_eta_cls / calo_eta[calo]
-            enratio_tot = recoE / trueE
-            deltaR_cls_calo = DeltaR(calo_phi[calo], calo_eta[calo], mean_phi_cls, mean_eta_cls)
-            histos2d["etareco_etatrue_tot"][strategy].Fill(calo_eta[calo],mean_eta_cls)
-            histos2d["phireco_phitrue_tot"][strategy].Fill(calo_phi[calo], mean_phi_cls)
-            histos2d["etaratio_etacalo_tot"][strategy].Fill(etaratio_tot, calo_eta[calo])
-            histos2d["etaratio_encalo_tot"][strategy].Fill(etaratio_tot, trueE)
-            histos2d["enratio_etacalo_tot"][strategy].Fill(enratio_tot, calo_eta[calo])
-            histos2d["enratio_encalo_tot"][strategy].Fill(enratio_tot, trueE )
-            histos2d["deltaR_encalo_tot"][strategy].Fill(deltaR_cls_calo, calo_simE[calo])
-            histos2d["deltaR_etacalo_tot"][strategy].Fill(deltaR_cls_calo, calo_eta[calo])
-            histos["etaratio_tot"][strategy].Fill(etaratio_tot)
-            histos["ereco_etrue_tot"][strategy].Fill(enratio_tot)
-            if abs(mean_eta_cls) > 1.5:
-                histos["ereco_etrue_EE_tot"][strategy].Fill(enratio_tot)
-            else:
-                histos["ereco_etrue_EB_tot"][strategy].Fill(enratio_tot)
-            histos["deltaR_recotrue_tot"][strategy].Fill(deltaR_cls_calo)
-            histos["ncl"][strategy].Fill(len(clusters))
-            histos2d["ncl_eta"][strategy].Fill( abs(calo_eta[calo]), len(clusters))
+            if clusters:
+                mean_eta_cls, mean_phi_cls = get_etaphi_clusters(clusters, xtal_cluster, xtal_cluster_noise)
+                etaratio_tot = mean_eta_cls / calo_eta[calo]
+                enratio_tot = recoE / trueE
+                deltaR_cls_calo = DeltaR(calo_phi[calo], calo_eta[calo], mean_phi_cls, mean_eta_cls)
+                histos2d["etareco_etatrue_tot"][strategy].Fill(calo_eta[calo],mean_eta_cls)
+                histos2d["phireco_phitrue_tot"][strategy].Fill(calo_phi[calo], mean_phi_cls)
+                histos2d["etaratio_etacalo_tot"][strategy].Fill(etaratio_tot, calo_eta[calo])
+                histos2d["etaratio_encalo_tot"][strategy].Fill(etaratio_tot, trueE)
+                histos2d["enratio_etacalo_tot"][strategy].Fill(enratio_tot, calo_eta[calo])
+                histos2d["enratio_encalo_tot"][strategy].Fill(enratio_tot, trueE )
+                histos2d["deltaR_encalo_tot"][strategy].Fill(deltaR_cls_calo, calo_simE[calo])
+                histos2d["deltaR_etacalo_tot"][strategy].Fill(deltaR_cls_calo, calo_eta[calo])
+                histos["etaratio_tot"][strategy].Fill(etaratio_tot)
+                histos["ereco_etrue_tot"][strategy].Fill(enratio_tot)
+                if abs(mean_eta_cls) > 1.5:
+                    histos["ereco_etrue_EE_tot"][strategy].Fill(enratio_tot)
+                else:
+                    histos["ereco_etrue_EB_tot"][strategy].Fill(enratio_tot)
+
+                histos["deltaR_recotrue_tot"][strategy].Fill(deltaR_cls_calo)
+                histos["ncl"][strategy].Fill(len(clusters))
+                histos2d["ncl_eta"][strategy].Fill( abs(calo_eta[calo]), len(clusters))
 
             if debug and len(clusters)> 5:
                 printout = True
-
-        # Cluster efficiency
+    
+        # Check superclustering efficiency
+        # Loop over genparticle, find the corresponding calo, 
+        # If the calo il missing report as an inefficiency
         for ngen, (g_eta, g_phi) in enumerate(zip(gen_eta, gen_phi)):
-            calogen = None
+            found = False
             for calo in calo_cluster_assoc.keys():
-                # comparing gen with caloparticle_gen info, should be the same
-                dr = DeltaR(g_phi, g_eta, calo_genphi[calo], calo_geneta[calo])
-                if dr < 1e-3:
-                    calogen = calo
+                if DeltaR(g_phi, g_eta, calo_genphi[calo], calo_geneta[calo]) < 1e-3:
+                    found = True
                     break
-            if calogen != None: 
-                # Saving caloParticle simInfo, not gen one
-                effplots["eff_eta"][strategy].Fill(has_clusters_calo[calogen], calo_eta[calo])
-                effplots["eff_pt"][strategy].Fill(has_clusters_calo[calogen], calo_pt[calo])
-                effplots["eff2_eta_pt"][strategy].Fill(has_clusters_calo[calogen], calo_eta[calo], calo_pt[calo])
+            if found != None: 
+                effplots["eff_eta"][strategy].Fill(True, calo_eta[calo])
+                effplots["eff_pt"][strategy].Fill(True, calo_pt[calo])
+                effplots["eff2_eta_pt"][strategy].Fill(True, calo_eta[calo], calo_pt[calo])
             else:
-                #print("Lost gen",strategy, g_eta)
                 effplots["eff_eta"][strategy].Fill(False, g_eta)
                 effplots["eff_pt"][strategy].Fill(False, gen_pt[ngen])
                 effplots["eff2_eta_pt"][strategy].Fill(False, g_eta, gen_pt[ngen])
+
 
         if printout:
             print("\n>>>",iev, "|", strategy, "| Cluster-calo map\n" , cluster_calo_assoc)
@@ -334,12 +332,11 @@ for var, hs in histos.items():
     leg = R.TLegend(0.68, 0.78, 0.97, 0.93)
     m = -1
     for strategy, h in hs.items():
-        h.Draw("hist same PLC")
+        h.Draw("hist same PLC ")
         leg.AddEntry(h, strategy, "l")
         h.SetLineWidth(3)
         mm = h.GetMaximum()
         if mm > m: m = mm
-    
     for _, h in hs.items():
         h.GetYaxis().SetRangeUser(0, m*1.2)
     leg.Draw("same")
@@ -349,6 +346,7 @@ for var, hs in histos.items():
     c1.SaveAs(args.outputdir+"/"+c1.GetName()+".png")
     c1.SaveAs(args.outputdir+"/"+c1.GetName()+".C")
     c1.SaveAs(args.outputdir+"/"+c1.GetName()+".root")
+    
     
 
 for var, hs in histos2d.items():
@@ -361,7 +359,6 @@ for var, hs in histos2d.items():
         c1.SaveAs(args.outputdir+"/"+c1.GetName()+".png")
         c1.SaveAs(args.outputdir+"/"+c1.GetName()+".C")
         c1.SaveAs(args.outputdir+"/"+c1.GetName()+".root")
-
 
 for var, hs in effplots.items():
     
