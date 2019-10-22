@@ -91,13 +91,13 @@ for strategy in association_strategies.strategies.keys():
     h_ereco_etrue_EE_tot = R.TH1F("ereco_etrue_EE_tot_{}".format(strategy), "", 25, 0, 1.5)
     h_ereco_etrue_EE = R.TH1F("ereco_etrue_EE_{}".format(strategy), "", 25, 0, 1.5)
 
-    h_nxtal_clu = R.TH1F("nxtals_clu_{}".format(strategy), "", 15, 0, 15)
+    h_nxtal_clu = R.TH1F("nxtals_clu_{}".format(strategy), "", 25, 0, 25)
     h_deltaR_recotrue = R.TH1F("deltaR_recotrue_{}".format(strategy), "", 30, 0, 2)
     h_deltaR_recotrue_tot = R.TH1F("deltaR_recotrue_tot_{}".format(strategy), "", 30, 0, 2)
 
     h_etaratio = R.TH1F("etaratio_{}".format(strategy), "", 40, -2, 2)
     h_etaratio_tot = R.TH1F("etaratio_tot_{}".format(strategy), "", 40, -2, 2)
-    h_ncl = R.TH1F("ncluster_{}".format(strategy), "", 15, 0, 15)
+    h_ncl = R.TH1F("ncluster_{}".format(strategy), "", 20, 0, 20)
     h2_ncl_eta = R.TH2F("ncl_eta_{}".format(strategy), "", 20, 0, 3,20, 1, 21)
     h2_phireco_phitrue = R.TH2F("phireco_phitrue{}".format(strategy),"", 40, -3.14,3.14, 40, -3.14,3.14)
     h2_phireco_phitrue_tot = R.TH2F("phireco_phitrue_tot_{}".format(strategy),"", 40, -3.14,3.14, 40, -3.14,3.14)
@@ -161,7 +161,7 @@ for strategy in association_strategies.strategies.keys():
     h2_deltaR_etacalo_tot.SetTitle("#Delta R Calo- All pfClusters (algo:{}): Eta calo;#Delta R calo- all clusters;Eta calo (GeV)".format(strategy))
 
     e_eff_eta.SetTitle("Eff. pfCluster (algo:{});#eta calo".format(strategy))
-    e_eff_eta.SetTitle("Eff. pfCluster (algo:{});Pt calo".format(strategy))
+    e_eff_pt.SetTitle("Eff. pfCluster (algo:{});Pt calo".format(strategy))
     e2_eff_eta_pt.SetTitle("Eff. pfCluster (algo:{});#eta calo; Pt calo".format(strategy))
     
     histos["etacalo"][strategy] = h_etacalo
@@ -251,7 +251,9 @@ for iev, event in enumerate(tree):
                 if enratio > 0.4 and enratio < 1.4:
                     hasCluster = True
 
-                histos["nxtal_clu"][strategy].Fill(len(filter(lambda (ieta,iphi,icl,clhit):icl==clid, xtal_cluster.keys())))
+                histos["nxtal_clu"][strategy].Fill(
+                    len(filter(lambda (ieta,iphi,icl,clhit):icl==clid, chain(xtal_cluster.keys(), xtal_cluster_noise) ))
+                    )
                 histos["etacluster"][strategy].Fill(pfCluster_eta[clid])
                 histos["encluster"][strategy].Fill(pfCluster_energy[clid])
                 histos["deltaR_recotrue"][strategy].Fill(deltaR_clcalo)
@@ -331,24 +333,38 @@ cache = []
 R.gStyle.SetOptStat(0)
 for var, hs in histos.items():
     c1 = R.TCanvas("c_{}".format(var), var, 800, 800)
-    leg = R.TLegend(0.68, 0.78, 0.97, 0.93)
+    leg = R.TLegend(0.2, 0.638, 0.53, 0.873)
     m = -1
+    i = 0
     for strategy, h in hs.items():
+        for i in range(h.GetNbinsX()+1):
+            if h.GetBinContent(i) == 0:
+                h.SetBinContent(i, 10e-4)
+               
         h.Draw("hist same PLC")
         leg.AddEntry(h, strategy, "l")
         h.SetLineWidth(3)
         mm = h.GetMaximum()
         if mm > m: m = mm
-    
+
+    leg.Draw("same")
+
+    for _, h in hs.items():
+        h.GetYaxis().SetRangeUser(0.8, m*100)
+    c1.SetLogy()
+    c1.Draw()
+    c1.SaveAs(args.outputdir+"/"+c1.GetName()+"_log.png")
+    c1.SaveAs(args.outputdir+"/"+c1.GetName()+"_log.C")
+    c1.SaveAs(args.outputdir+"/"+c1.GetName()+"_log.root")
+
+    c1.SetLogy(False)
     for _, h in hs.items():
         h.GetYaxis().SetRangeUser(0, m*1.2)
-    leg.Draw("same")
-    cache.append(leg)
-    #c1.SetLogy()
     c1.Draw()
     c1.SaveAs(args.outputdir+"/"+c1.GetName()+".png")
     c1.SaveAs(args.outputdir+"/"+c1.GetName()+".C")
     c1.SaveAs(args.outputdir+"/"+c1.GetName()+".root")
+   
     
 
 for var, hs in histos2d.items():
@@ -363,18 +379,37 @@ for var, hs in histos2d.items():
         c1.SaveAs(args.outputdir+"/"+c1.GetName()+".root")
 
 
+colors= {
+    "sim_fraction" : R.TColor.GetColorPalette(1), 
+    "nxtals":R.TColor.GetColorPalette(100), 
+    "deltaR":R.TColor.GetColorPalette(200), 
+    "sim_fraction_min1":R.TColor.GetColorPalette(300),
+    "sim_fraction_min3":R.TColor.GetColorPalette(400),
+    "sim_rechit_diff": R.TColor.GetColorPalette(500),
+    "sim_rechit_fractions": R.TColor.GetColorPalette(600),
+}
 for var, hs in effplots.items():
-    
-    for strategy, h in hs.items():
-        c1 = R.TCanvas("c_{}_{}".format(var, strategy), var, 800, 800)
-        if "eff2" in var:
-            h.Draw("COLZ")
-        else:
-            h.SetMarkerStyle(10)
-            h.Draw("AP PMC")
+    c1 = R.TCanvas("c_{}".format(var), var, 800, 800)
+    leg = R.TLegend(0.35, 0.14, 0.68, 0.40)
+    i = 0
 
-        cache.append(c1)   
-        c1.Draw()
-        c1.SaveAs(args.outputdir+"/"+c1.GetName()+".png")
-        c1.SaveAs(args.outputdir+"/"+c1.GetName()+".C")
-        c1.SaveAs(args.outputdir+"/"+c1.GetName()+".root")
+    for strategy, h in hs.items():
+        h.SetMarkerStyle(10)
+        h.SetLineWidth(2)
+        h.SetMarkerSize(2)
+        h.SetLineColor(colors[strategy])
+        h.SetMarkerColor(colors[strategy])
+
+        if i == 0:
+            h.Draw("APL")
+            h.SetTitle("Eff. pfCluster")
+            i+=1
+        else:
+            h.Draw("same PL")
+        leg.AddEntry(h, strategy, "lp")
+
+    leg.Draw("same")
+    c1.Draw()
+    c1.SaveAs(args.outputdir+"/"+c1.GetName()+".png")
+    c1.SaveAs(args.outputdir+"/"+c1.GetName()+".C")
+    c1.SaveAs(args.outputdir+"/"+c1.GetName()+".root")

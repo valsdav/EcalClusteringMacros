@@ -261,7 +261,7 @@ def nxtals_strategy(xtal_cluster, xtal_calo, event, cluster_type="pfCluster"):
     return cluster_calo_assoc, sorted_calo_cluster_assoc
 
 
-def deltaR_strategy(xtal_cluster, xtal_calo, event, cluster_type="pfCluster"):
+def deltaR_strategy(xtal_cluster, xtal_calo, event, cluster_type="pfCluster", min_deltaR = 0.1):
     gen_eta = event.caloParticle_genEta
     gen_phi = event.caloParticle_genPhi
     cl_eta = getattr(event, cluster_type +"_eta")
@@ -273,11 +273,15 @@ def deltaR_strategy(xtal_cluster, xtal_calo, event, cluster_type="pfCluster"):
     for clid in range(len(cl_eta)):
         deltaRs = []
         for calo in range(len(gen_eta)):
-            deltaRs.append((calo, DeltaR(cl_phi[clid], cl_eta[clid], gen_phi[calo], gen_eta[calo])))
+            dr = DeltaR(cl_phi[clid], cl_eta[clid], gen_phi[calo], gen_eta[calo])
+            if dr < 0.1:
+                deltaRs.append((calo, dr))
 
         caloids = list(sorted(deltaRs, key=itemgetter(1)))
         cluster_calo_assoc[clid] = caloids
-        calo_cluster_assoc[caloids[0][0]].append((clid, caloids[0][1]))
+
+        if len(caloids) != 0:
+            calo_cluster_assoc[caloids[0][0]].append((clid, caloids[0][1]))
 
     sorted_calo_cluster_assoc = {}
     for caloid, clinfo in calo_cluster_assoc.items():
@@ -294,8 +298,8 @@ strategies = {
     "sim_fraction": sim_fraction_stragegy,
     "sim_rechit_diff": sim_rechit_diff_strategy,
     "nxtals": nxtals_strategy,
-    "deltaR": deltaR_strategy,
     "sim_rechit_fractions": sim_rechit_fractions_strategy,
+    "deltaR": lambda xtal_cluster, xtal_calo, event, cluster_type: deltaR_strategy(xtal_cluster, xtal_calo, event, cluster_type, min_deltaR=0.1),
     "sim_fraction_min1":  lambda xtal_cluster, xtal_calo, event, cluster_type: sim_fraction_stragegy(xtal_cluster, xtal_calo, event, cluster_type, min_fraction=0.01),
     "sim_fraction_min3":  lambda xtal_cluster, xtal_calo, event, cluster_type: sim_fraction_stragegy(xtal_cluster, xtal_calo, event, cluster_type, min_fraction=0.03)
     #"sim_rechit_global_fraction": sim_rechit_global_fraction_strategy,
