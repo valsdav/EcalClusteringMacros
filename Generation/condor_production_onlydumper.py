@@ -17,6 +17,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--inputdir", type=str, help="Inputdir", required=True)
 parser.add_argument("-o", "--outputdir", type=str, help="Outputdir", required=True)
 parser.add_argument("-c", "--cmssw", type=str, help="CMSSW tar", required=True)
+parser.add_argument("-d", "---dumper", type=str, help="Dumper to run", required=True, default="RecoSimDumper")
 parser.add_argument("-q", "--queue", type=str, help="Condor queue", default="longlunch", required=True)
 parser.add_argument("-e", "--eos", type=str, default="user", help="EOS instance user/cms", required=False)
 parser.add_argument("--redo", action="store_true", default=False, help="Redo all files")
@@ -63,7 +64,7 @@ xrdcp --nopbar root://eos{eosinstance}.cern.ch/${INPUTFILE} step3.root;
 echo -e "Running dumper.."
 
 cd ..
-cmsRun python/RecoSimDumper_cfg.py inputFile=test/step3.root outputFile=output_${JOBID}.root
+cmsRun python/{dumper}_cfg.py inputFile=test/step3.root outputFile=output_${JOBID}.root
 
 
 echo -e "Copying result to: $OUTPUTFILE";
@@ -78,6 +79,7 @@ script = script.replace("{user}", user)
 cmssw_file = args.cmssw.split("/")[-1]
 script = script.replace("{cmssw_loc}", args.cmssw)
 script = script.replace("{cmssw_file}", cmssw_file)
+script = script.replace("{dumper}", args.dumper)
 
 arguments= []
 if not os.path.exists(args.outputdir):
@@ -89,8 +91,8 @@ inputfiles = [ f for f in os.listdir(args.inputdir)]
 jobid = 0
 for ifile in inputfiles:
     jobid +=1
-    outputfile = args.outputdir + "/" + ifile[:-5] + "_output.root"
     inputfile = args.inputdir + "/" + ifile
+    outputfile = args.outputdir + "/" + ifile[:-5] + "_output.root"
 
     if not args.redo and outputfile in outputfiles:
         continue
