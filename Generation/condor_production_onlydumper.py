@@ -54,7 +54,7 @@ JOBID=$1;
 INPUTFILE=$2;
 OUTPUTFILE=$3;
 
-cd RecoSimStudies/Dumpers/test
+cd RecoSimStudies/Dumpers/
 
 echo -e "cmsRun..";
 
@@ -63,8 +63,7 @@ xrdcp --nopbar root://eos{eosinstance}.cern.ch/${INPUTFILE} step3.root;
 
 echo -e "Running dumper.."
 
-cd ..
-cmsRun python/{dumper}_cfg.py inputFile=test/step3.root outputFile=output_${JOBID}.root
+cmsRun python/{dumper}_cfg.py inputFile=step3.root outputFile=output_${JOBID}.root
 
 
 echo -e "Copying result to: $OUTPUTFILE";
