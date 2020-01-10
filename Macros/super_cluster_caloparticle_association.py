@@ -58,7 +58,7 @@ def DeltaR(phi1, eta1, phi2, eta2):
         if dphi < -R.TMath.Pi(): dphi += 2*R.TMath.Pi()
         deta = eta1 - eta2
         deltaR = (deta*deta) + (dphi*dphi)
-        return deltaR
+        return sqrt(deltaR)
 
 def get_etaphi_clusters(clusters, xtal_cluster, xtal_cluster_noise):
     mean_eta = 0.
@@ -98,7 +98,7 @@ for strategy in association_strategies.strategies.keys():
     h_ereco_etrue_EE_tot = R.TH1F("ereco_etrue_EE_tot_{}".format(strategy), "", 25, 0, 1.5)
     h_ereco_etrue_EE = R.TH1F("ereco_etrue_EE_{}".format(strategy), "", 25, 0, 1.5)
 
-    h_nxtal_clu = R.TH1F("nxtals_clu_{}".format(strategy), "", 40, 0, 40)
+    h_nxtal_clu = R.TH1F("nxtals_clu_{}".format(strategy), "", 60, 0, 60)
     h_deltaR_recotrue = R.TH1F("deltaR_recotrue_{}".format(strategy), "", 30, 0, 2)
     h_deltaR_recotrue_tot = R.TH1F("deltaR_recotrue_tot_{}".format(strategy), "", 30, 0, 2)
 
@@ -109,20 +109,21 @@ for strategy in association_strategies.strategies.keys():
     h2_phireco_phitrue = R.TH2F("phireco_phitrue{}".format(strategy),"", 40, -3.14,3.14, 40, -3.14,3.14)
     h2_phireco_phitrue_tot = R.TH2F("phireco_phitrue_tot_{}".format(strategy),"", 40, -3.14,3.14, 40, -3.14,3.14)
     h2_etareco_etatrue = R.TH2F("etareco_etatrue{}".format(strategy),"", 40, -3, 3, 40, -3, 3)
-    h2_etaratio_etacalo = R.TH2F("etaratio_etacalo{}".format(strategy),"", 40, -2, 2, 40, -3, 3)
-    h2_etaratio_encalo =  R.TH2F("etaratio_ecalo{}".format(strategy),"", 40, -2,2, 40, 0,500)
-    h2_enratio_etacalo = R.TH2F("enratio_etacalo{}".format(strategy),"",  40, 0,2,40, -3,3)
-    h2_enratio_encalo =   R.TH2F("enratio_ecalo{}".format(strategy),"",  40, 0,2, 40, 0,500)
-    h2_deltaR_encalo =  R.TH2F("deltaR_ecalo{}".format(strategy),"", 40, 0,1.5, 40, 0,500)
-    h2_deltaR_etacalo =  R.TH2F("deltaR_etacalo{}".format(strategy),"", 40, 0,1.5, 40, -3,3)
+    
+    h2_etaratio_etacalo = R.TH2F("etaratio_etacalo{}".format(strategy),"",40, -3, 3, 40, -2, 2)
+    h2_etaratio_encalo =  R.TH2F("etaratio_ecalo{}".format(strategy),"", 40, 0,500, 40, -2,2)
+    h2_enratio_etacalo = R.TH2F("enratio_etacalo{}".format(strategy),"", 40, -3,3, 40, 0,2)
+    h2_enratio_encalo =   R.TH2F("enratio_ecalo{}".format(strategy),"",  40, 0,500,  40, 0,2)
+    h2_deltaR_encalo =  R.TH2F("deltaR_ecalo{}".format(strategy),"", 40, 0,500, 40, 0,1.5, )
+    h2_deltaR_etacalo =  R.TH2F("deltaR_etacalo{}".format(strategy),"", 40, -3,3, 40, 0,1.5, )
 
-    h2_etareco_etatrue_tot = R.TH2F("etareco_etatrue_tot_{}".format(strategy),"", 40, -3, 3, 40, -3, 3)
-    h2_etaratio_etacalo_tot = R.TH2F("etaratio_etacalo_tot_{}".format(strategy),"", 40, -2, 2, 40, -3, 3)
-    h2_etaratio_encalo_tot =  R.TH2F("etaratio_ecalo_tot_{}".format(strategy),"", 40, -2,2, 40, 0,500)
-    h2_enratio_etacalo_tot = R.TH2F("enratio_etacalo_tot_{}".format(strategy),"",  40, 0,2,40, -3,3)
-    h2_enratio_encalo_tot =   R.TH2F("enratio_ecalo_tot_{}".format(strategy),"",  40, 0,2, 40, 0,500)
-    h2_deltaR_encalo_tot =  R.TH2F("deltaR_ecalo_tot{}".format(strategy),"", 15, 0,0.3, 40, 0,500)
-    h2_deltaR_etacalo_tot =  R.TH2F("deltaR_etacalo_tot{}".format(strategy),"", 15, 0,0.3, 40, -3,3)
+    h2_etareco_etatrue_tot = R.TH2F("etareco_etatrue_tot_{}".format(strategy),"", 40, -3, 3, 40, -3, 3, )
+    h2_etaratio_etacalo_tot = R.TH2F("etaratio_etacalo_tot_{}".format(strategy),"", 40, -3, 3, 40, -2, 2 )
+    h2_etaratio_encalo_tot =  R.TH2F("etaratio_ecalo_tot_{}".format(strategy),"",40, 0,500, 40, -2,2 )
+    h2_enratio_etacalo_tot = R.TH2F("enratio_etacalo_tot_{}".format(strategy),"", 40, -3,3, 40, 0,2)
+    h2_enratio_encalo_tot =   R.TH2F("enratio_ecalo_tot_{}".format(strategy),"",  40, 0,500, 40, 0,2)
+    h2_deltaR_encalo_tot =  R.TH2F("deltaR_ecalo_tot{}".format(strategy),"", 40, 0,500, 15, 0,0.3, )
+    h2_deltaR_etacalo_tot =  R.TH2F("deltaR_etacalo_tot{}".format(strategy),"", 40, -3,3, 15, 0,0.3 )
 
     e_eff_eta = R.TEfficiency("eff_eta_{}".format(strategy), "", 30, -3, 3)
     e_eff_pt = R.TEfficiency("eff_pt_{}".format(strategy), "", 25, 1, 100)
@@ -152,20 +153,20 @@ for strategy in association_strategies.strategies.keys():
     h2_phireco_phitrue.SetTitle("Phi calo: Phi superCluster (algo: {}); Phi calo; Phi superCluster".format(strategy))
     h2_phireco_phitrue_tot.SetTitle("Phi calo: Mean Phi superClusters (algo: {}); Phi calo; Mean Phi superClusters".format(strategy))
     h2_etareco_etatrue.SetTitle("Eta calo:Eta superCluster (algo:{});Eta calo;Eta superCluster".format(strategy))
-    h2_etaratio_etacalo.SetTitle("Eta calo/eta superCluster (algo:{}): Eta calo;Eta calo / eta superCluster;Eta calo".format(strategy))
-    h2_etaratio_encalo.SetTitle("Eta calo/eta superCluster (algo:{}): Energy calo (GeV);Eta calo / eta superCluster;Energy calo [GeV]".format(strategy))
-    h2_enratio_etacalo.SetTitle("En calo/En superCluster (algo:{}): Eta calo;En calo / En superCluster;Eta calo".format(strategy))
-    h2_enratio_encalo.SetTitle("En calo/En superCluster (algo:{}): Energy calo (GeV);En calo / En superCluster;Energy calo [GeV]".format(strategy))
-    h2_deltaR_encalo.SetTitle("#Delta R Calo-superCluster (algo:{}): Energy calo;#Delta R calo-cluster;Energy calo (GeV)".format(strategy))
-    h2_deltaR_etacalo.SetTitle("#Delta R Calo-superCluster (algo:{}): Eta calo;#Delta R calo-cluster;Eta calo".format(strategy))
+    h2_etaratio_etacalo.SetTitle("Eta calo/eta superCluster (algo:{}): Eta calo;Eta calo;Eta calo / eta superCluster".format(strategy))
+    h2_etaratio_encalo.SetTitle("Eta calo/eta superCluster (algo:{}): Energy calo (GeV);Energy calo [GeV];Eta calo / eta superCluster".format(strategy))
+    h2_enratio_etacalo.SetTitle("En calo/En superCluster (algo:{}): Eta calo;Eta calo;En calo / En superCluster".format(strategy))
+    h2_enratio_encalo.SetTitle("En calo/En superCluster (algo:{}): Energy calo (GeV);Energy calo [GeV];En calo / En superCluster".format(strategy))
+    h2_deltaR_encalo.SetTitle("#Delta R Calo-superCluster (algo:{}): Energy calo;Energy calo (GeV);#Delta R calo-cluster".format(strategy))
+    h2_deltaR_etacalo.SetTitle("#Delta R Calo-superCluster (algo:{}): Eta calo;Eta calo;#Delta R calo-cluster".format(strategy))
 
-    h2_etareco_etatrue_tot.SetTitle("Eta calo:Mean Eta superClusters (algo:{});Eta calo;Mean Eta superCluster".format(strategy))
-    h2_etaratio_etacalo_tot.SetTitle("Eta calo/Mean Eta superClusters (algo:{}): Eta calo;Eta calo /Mean Eta superCluster;Eta calo".format(strategy))
-    h2_etaratio_encalo_tot.SetTitle("Eta calo/Mean Eta superClusters (algo:{}): Energy calo;Eta calo /Mean Eta superCluster;Energy calo [GeV]".format(strategy))
-    h2_enratio_etacalo_tot.SetTitle("En calo/Tot En superClusters (algo:{}): Eta calo;En calo / Tot En superCluster;Eta calo".format(strategy))
-    h2_enratio_encalo_tot.SetTitle("En calo/Tot En superClusters (algo:{}): Energy calo;En calo /Tot En superCluster;Energy calo [GeV]".format(strategy))
-    h2_deltaR_encalo_tot.SetTitle("#Delta R Calo- All superClusters (algo:{}): Energy calo;#Delta R calo- all clusters;Energy calo (GeV)".format(strategy))
-    h2_deltaR_etacalo_tot.SetTitle("#Delta R Calo- All superClusters (algo:{}): Eta calo;#Delta R calo- all clusters;Eta calo (GeV)".format(strategy))
+    h2_etareco_etatrue_tot.SetTitle("Eta calo:Mean Eta superClusters (algo:{});Mean Eta superCluster;Eta calo".format(strategy))
+    h2_etaratio_etacalo_tot.SetTitle("Eta calo/Mean Eta superClusters (algo:{}): Eta calo;Eta calo;Eta calo /Mean Eta superCluster".format(strategy))
+    h2_etaratio_encalo_tot.SetTitle("Eta calo/Mean Eta superClusters (algo:{}): Energy calo;Energy calo [GeV];Eta calo /Mean Eta superCluster".format(strategy))
+    h2_enratio_etacalo_tot.SetTitle("En calo/Tot En superClusters (algo:{}): Eta calo;Eta calo;En calo / Tot En superCluster".format(strategy))
+    h2_enratio_encalo_tot.SetTitle("En calo/Tot En superClusters (algo:{}): Energy calo;Energy calo [GeV];En calo /Tot En superCluster".format(strategy))
+    h2_deltaR_encalo_tot.SetTitle("#Delta R Calo- All superClusters (algo:{}): Energy calo;Energy calo (GeV);#Delta R calo- all clusters".format(strategy))
+    h2_deltaR_etacalo_tot.SetTitle("#Delta R Calo- All superClusters (algo:{}): Eta calo;Eta calo (GeV);#Delta R calo- all clusters".format(strategy))
 
     e_eff_eta.SetTitle("Eff. SuperCluster (algo:{});#eta calo".format(strategy))
     e_eff_pt.SetTitle("Eff. SuperCluster (algo:{});Pt calo".format(strategy))
@@ -245,7 +246,7 @@ for iev, event in enumerate(tree):
             
             if debug: print("calo ", calo, strategy, clusters)
             for clid in clusters:
-                deltaR_clcalo = DeltaR(calo_phi[calo], calo_eta[calo], superCluster_phi[clid], superCluster_eta[clid])
+                deltaR_clcalo = DeltaR(calo_genphi[calo], calo_geneta[calo], superCluster_phi[clid], superCluster_eta[clid])
                 recoE += superCluster_energy[clid]
                 etaratio = superCluster_eta[clid] / calo_eta[calo]
                 enratio = superCluster_energy[clid] / calo_simE[calo]
@@ -267,27 +268,27 @@ for iev, event in enumerate(tree):
                 histos2d["etareco_etatrue"][strategy].Fill(calo_eta[calo],superCluster_eta[clid])
                 histos2d["phireco_phitrue"][strategy].Fill(calo_phi[calo],superCluster_phi[clid])
 
-                histos2d["etaratio_etacalo"][strategy].Fill(etaratio, calo_eta[calo])
-                histos2d["etaratio_encalo"][strategy].Fill(etaratio, trueE)
-                histos2d["enratio_etacalo"][strategy].Fill(enratio, calo_eta[calo])
-                histos2d["enratio_encalo"][strategy].Fill(enratio, trueE )
-                histos2d["deltaR_encalo"][strategy].Fill(deltaR_clcalo, calo_simE[calo])
-                histos2d["deltaR_etacalo"][strategy].Fill(deltaR_clcalo, calo_eta[calo])
+                histos2d["etaratio_etacalo"][strategy].Fill( calo_eta[calo],etaratio)
+                histos2d["etaratio_encalo"][strategy].Fill(trueE, etaratio)
+                histos2d["enratio_etacalo"][strategy].Fill(calo_eta[calo],enratio)
+                histos2d["enratio_encalo"][strategy].Fill(trueE, enratio )
+                histos2d["deltaR_encalo"][strategy].Fill(calo_simE[calo], deltaR_clcalo)
+                histos2d["deltaR_etacalo"][strategy].Fill(calo_eta[calo], deltaR_clcalo)
 
             # plot with tot cluter
             if clusters:
                 mean_eta_cls, mean_phi_cls = get_etaphi_clusters(clusters, xtal_cluster, xtal_cluster_noise)
                 etaratio_tot = mean_eta_cls / calo_eta[calo]
                 enratio_tot = recoE / trueE
-                deltaR_cls_calo = DeltaR(calo_phi[calo], calo_eta[calo], mean_phi_cls, mean_eta_cls)
+                deltaR_cls_calo = DeltaR(calo_genphi[calo], calo_geneta[calo], mean_phi_cls, mean_eta_cls)
                 histos2d["etareco_etatrue_tot"][strategy].Fill(calo_eta[calo],mean_eta_cls)
                 histos2d["phireco_phitrue_tot"][strategy].Fill(calo_phi[calo], mean_phi_cls)
-                histos2d["etaratio_etacalo_tot"][strategy].Fill(etaratio_tot, calo_eta[calo])
-                histos2d["etaratio_encalo_tot"][strategy].Fill(etaratio_tot, trueE)
-                histos2d["enratio_etacalo_tot"][strategy].Fill(enratio_tot, calo_eta[calo])
-                histos2d["enratio_encalo_tot"][strategy].Fill(enratio_tot, trueE )
-                histos2d["deltaR_encalo_tot"][strategy].Fill(deltaR_cls_calo, calo_simE[calo])
-                histos2d["deltaR_etacalo_tot"][strategy].Fill(deltaR_cls_calo, calo_eta[calo])
+                histos2d["etaratio_etacalo_tot"][strategy].Fill( calo_eta[calo],etaratio_tot)
+                histos2d["etaratio_encalo_tot"][strategy].Fill( trueE, etaratio_tot)
+                histos2d["enratio_etacalo_tot"][strategy].Fill(calo_eta[calo], enratio_tot)
+                histos2d["enratio_encalo_tot"][strategy].Fill(trueE, enratio_tot )
+                histos2d["deltaR_encalo_tot"][strategy].Fill(calo_simE[calo], deltaR_cls_calo )
+                histos2d["deltaR_etacalo_tot"][strategy].Fill(calo_eta[calo], deltaR_cls_calo)
                 histos["etaratio_tot"][strategy].Fill(etaratio_tot)
                 histos["ereco_etrue_tot"][strategy].Fill(enratio_tot)
                 if abs(mean_eta_cls) > 1.5:
@@ -362,14 +363,27 @@ for var, hs in histos.items():
     c1.SaveAs(args.outputdir+"/"+c1.GetName()+".root")
    
 
+
+for var, hs in histos2d.items():
+    for strategy, h in hs.items():
+        c1 = R.TCanvas("c_{}_{}".format(var, strategy), var, 800, 800)
+        h.Draw("COLZ")
+        cache.append(c1)
+        c1.SetLogz()
+        c1.Draw()
+        c1.SaveAs(args.outputdir+"/"+c1.GetName()+".png")
+        c1.SaveAs(args.outputdir+"/"+c1.GetName()+".C")
+        c1.SaveAs(args.outputdir+"/"+c1.GetName()+".root")
+
+
 colors= {
     "sim_fraction" : R.TColor.GetColorPalette(1), 
-    "nxtals":R.TColor.GetColorPalette(100), 
-    "deltaR":R.TColor.GetColorPalette(200), 
-    "sim_fraction_min1":R.TColor.GetColorPalette(300),
-    "sim_fraction_min3":R.TColor.GetColorPalette(400),
-    "sim_rechit_diff": R.TColor.GetColorPalette(500),
-    "sim_rechit_fractions": R.TColor.GetColorPalette(600),
+    "nxtals":R.TColor.GetColorPalette(50), 
+    "deltaR":R.TColor.GetColorPalette(100), 
+    "sim_fraction_min1":R.TColor.GetColorPalette(150),
+    "sim_fraction_min3":R.TColor.GetColorPalette(190),
+    "sim_rechit_diff": R.TColor.GetColorPalette(220),
+    "sim_rechit_fractions": R.TColor.GetColorPalette(250),
 }
 for var, hs in effplots.items():
     c1 = R.TCanvas("c_{}".format(var), var, 800, 800)
@@ -379,7 +393,7 @@ for var, hs in effplots.items():
     for strategy, h in hs.items():
         h.SetMarkerStyle(10)
         h.SetLineWidth(2)
-        h.SetMarkerSize(2)
+        h.SetMarkerSize(1)
         h.SetLineColor(colors[strategy])
         h.SetMarkerColor(colors[strategy])
 

@@ -2,6 +2,7 @@ from __future__ import print_function
 from collections import defaultdict
 from operator import itemgetter, attrgetter
 from itertools import chain
+from math import sqrt
 import ROOT as R
 
 def DeltaR(phi1, eta1, phi2, eta2):
@@ -10,7 +11,7 @@ def DeltaR(phi1, eta1, phi2, eta2):
         if dphi < -R.TMath.Pi(): dphi += 2*R.TMath.Pi()
         deta = eta1 - eta2
         deltaR = (deta*deta) + (dphi*dphi)
-        return deltaR
+        return sqrt(deltaR)
 
 def get_hits_maps(event, cluster_type="pfCluster", debug=False):
     ncalo = event.caloParticle_simEnergy.size()
@@ -296,19 +297,19 @@ def deltaR_strategy(xtal_cluster, xtal_calo, event, cluster_type="pfCluster", mi
 
 strategies = {
     "sim_fraction": sim_fraction_stragegy,
-    "sim_rechit_diff": sim_rechit_diff_strategy,
-    "nxtals": nxtals_strategy,
-    "sim_rechit_fractions": sim_rechit_fractions_strategy,
+    #"sim_rechit_diff": sim_rechit_diff_strategy,
+    #"nxtals": nxtals_strategy,
+    #"sim_rechit_fractions": sim_rechit_fractions_strategy,
     "deltaR": lambda xtal_cluster, xtal_calo, event, cluster_type: deltaR_strategy(xtal_cluster, xtal_calo, event, cluster_type, min_deltaR=0.1),
     "sim_fraction_min1":  lambda xtal_cluster, xtal_calo, event, cluster_type: sim_fraction_stragegy(xtal_cluster, xtal_calo, event, cluster_type, min_fraction=0.01),
-    "sim_fraction_min3":  lambda xtal_cluster, xtal_calo, event, cluster_type: sim_fraction_stragegy(xtal_cluster, xtal_calo, event, cluster_type, min_fraction=0.03)
+    #"sim_fraction_min3":  lambda xtal_cluster, xtal_calo, event, cluster_type: sim_fraction_stragegy(xtal_cluster, xtal_calo, event, cluster_type, min_fraction=0.03)
     #"sim_rechit_global_fraction": sim_rechit_global_fraction_strategy,
 }
 
 
 def get_all_associations(event, cluster_type="pfCluster", debug=False):
     xtal_cluster, xtal_calo, xtal_cluster_noise = get_hits_maps(event, cluster_type=cluster_type, debug=debug)
-    assoc = {}
+    assoc = {}   
     for strategy, f in strategies.items():
         assoc[strategy] = f(xtal_cluster, xtal_calo, event, cluster_type=cluster_type)
     return assoc, (xtal_cluster, xtal_calo, xtal_cluster_noise)

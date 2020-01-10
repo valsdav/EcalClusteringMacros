@@ -16,7 +16,7 @@ import association_strategies
 R.TH1.SetDefaultSumw2()
 R.gStyle.SetOptFit(1111)
 #R.gStyle.SetOptStat(0)
-R.gStyle.SetPalette(R.kLightTemperature)
+R.gStyle.SetPalette(R.kViridis)
 
 '''
 This script analyse the pfclusters and caloparticle and perform
@@ -90,6 +90,8 @@ for strategy in association_strategies.strategies.keys():
     h_ereco_etrue_EB = R.TH1F("ereco_etrue_EB_{}".format(strategy), "", 25, 0, 1.5)
     h_ereco_etrue_EE_tot = R.TH1F("ereco_etrue_EE_tot_{}".format(strategy), "", 25, 0, 1.5)
     h_ereco_etrue_EE = R.TH1F("ereco_etrue_EE_{}".format(strategy), "", 25, 0, 1.5)
+    h_ereco_etrue_EB_best = R.TH1F("ereco_etrue_EB_best_{}".format(strategy), "", 25, 0, 1.5)
+    h_ereco_etrue_EE_best = R.TH1F("ereco_etrue_EE_best_{}".format(strategy), "", 25, 0, 1.5)
 
     h_nxtal_clu = R.TH1F("nxtals_clu_{}".format(strategy), "", 50, 0, 50)
     h_deltaR_recotrue = R.TH1F("deltaR_recotrue_{}".format(strategy), "", 30, 0, 2)
@@ -118,7 +120,8 @@ for strategy in association_strategies.strategies.keys():
     h2_deltaR_etacalo_tot =  R.TH2F("deltaR_etacalo_tot{}".format(strategy),"", 40, -3,3, 15, 0,0.3 )
 
     e_eff_eta = R.TEfficiency("eff_eta_{}".format(strategy), "", 30, -3, 3)
-    e_eff_pt = R.TEfficiency("eff_pt_{}".format(strategy), "", 25, 1, 100)
+    e_eff_pt_EB = R.TEfficiency("eff_pt_{}".format(strategy), "", 25, 1, 100)
+    e_eff_pt_EE = R.TEfficiency("eff_pt_{}".format(strategy), "", 25, 1, 100)
     e2_eff_eta_pt = R.TEfficiency("eff_eta_pt_{}".format(strategy), "", 25, -3, 3, 5, 1, 100)
 
     #######################
@@ -134,6 +137,8 @@ for strategy in association_strategies.strategies.keys():
     h_ereco_etrue_EB_tot.SetTitle("E reco (all pfClusters)/E true (EB);E_reco (all pfCl.)/E_true;")
     h_ereco_etrue_EE.SetTitle("E reco/E true (EE);E_reco/E_true;")
     h_ereco_etrue_EE_tot.SetTitle("E reco (all pfClusters)/E true (EE);E_reco (all pfCl.)/E_true;")
+    h_ereco_etrue_EB_best.SetTitle("E reco (best score pfCluster)/ E true (EB); E_reco (best pfCluster)/E_true;")
+    h_ereco_etrue_EE_best.SetTitle("E reco (best score pfCluster)/ E true (EE); E_reco (best pfCluster)/E_true;")
     h_etaratio.SetTitle("|#eta reco/ #eta true|;|#eta_reco/#eta_true|")
     h_etaratio_tot.SetTitle("|Mean #eta reco / #eta true|;|Mean #eta_reco/#eta_true|")
     h_ncl.SetTitle("N Clusters per caloparticle;N Clusters;")
@@ -161,7 +166,8 @@ for strategy in association_strategies.strategies.keys():
     h2_deltaR_etacalo_tot.SetTitle("#Delta R Calo- All pfClusters (algo:{}): Eta calo;Eta calo (GeV);#Delta R calo- all clusters".format(strategy))
 
     e_eff_eta.SetTitle("Eff. pfCluster (algo:{});#eta calo".format(strategy))
-    e_eff_pt.SetTitle("Eff. pfCluster (algo:{});Pt calo".format(strategy))
+    e_eff_pt_EB.SetTitle("Eff. pfCluster (algo:{}) (EB);Pt calo".format(strategy))
+    e_eff_pt_EE.SetTitle("Eff. pfCluster (algo:{}) (EE);Pt calo".format(strategy))
     e2_eff_eta_pt.SetTitle("Eff. pfCluster (algo:{});#eta calo; Pt calo".format(strategy))
     
     histos["etacalo"][strategy] = h_etacalo
@@ -172,8 +178,10 @@ for strategy in association_strategies.strategies.keys():
     histos["ereco_etrue_tot"][strategy] = h_ereco_etrue_tot
     histos["ereco_etrue_EB"][strategy] = h_ereco_etrue_EB
     histos["ereco_etrue_EB_tot"][strategy] = h_ereco_etrue_EB_tot
+    histos["ereco_etrue_EB_best"][strategy] = h_ereco_etrue_EB_best
     histos["ereco_etrue_EE"][strategy] = h_ereco_etrue_EE
     histos["ereco_etrue_EE_tot"][strategy] = h_ereco_etrue_EE_tot
+    histos["ereco_etrue_EE_best"][strategy] = h_ereco_etrue_EE_best
     histos["etaratio"][strategy] = h_etaratio
     histos["etaratio_tot"][strategy] = h_etaratio_tot
     histos["ncl"][strategy] = h_ncl 
@@ -202,7 +210,8 @@ for strategy in association_strategies.strategies.keys():
     histos2d["deltaR_etacalo_tot"][strategy] = h2_deltaR_etacalo_tot
 
     effplots["eff_eta"][strategy] = e_eff_eta
-    effplots["eff_pt"][strategy] = e_eff_pt
+    effplots["eff_pt_EB"][strategy] = e_eff_pt_EB
+    effplots["eff_pt_EE"][strategy] = e_eff_pt_EE
     effplots["eff2_eta_pt"][strategy] = e2_eff_eta_pt
 
 
@@ -237,7 +246,12 @@ for iev, event in enumerate(tree):
             trueE = calo_simE[calo]
             histos["encalo"][strategy].Fill(trueE)
             histos["etacalo"][strategy].Fill(calo_eta[calo])
-            recoE = 0.
+            recoE = 0.  
+            # Save energy of first cluster
+            if abs(pfCluster_eta[clusters[0]]) > 1.5:
+                histos["ereco_etrue_EE_best"][strategy].Fill(pfCluster_energy[clusters[0]]/trueE)
+            else:
+                histos["ereco_etrue_EB_best"][strategy].Fill(pfCluster_energy[clusters[0]]/trueE)
 
             # Check efficiency
             hasCluster = False
@@ -309,6 +323,7 @@ for iev, event in enumerate(tree):
         for ngen, (g_eta, g_phi) in enumerate(zip(gen_eta, gen_phi)):
             calogen = None
             for calo in calo_cluster_assoc.keys():
+                #remove crack
                 # comparing gen with caloparticle_gen info, should be the same
                 dr = DeltaR(g_phi, g_eta, calo_genphi[calo], calo_geneta[calo])
                 if dr < 1e-3:
@@ -317,13 +332,23 @@ for iev, event in enumerate(tree):
             if calogen != None: 
                 # Saving caloParticle simInfo, not gen one
                 effplots["eff_eta"][strategy].Fill(has_clusters_calo[calogen], calo_eta[calo])
-                effplots["eff_pt"][strategy].Fill(has_clusters_calo[calogen], calo_pt[calo])
+                if abs(calo_eta[calo])< 1.492 and abs(calo_eta[calo]) > 1.442: continue
+                if abs(calo_eta[calo])> 1.5:
+                    effplots["eff_pt_EE"][strategy].Fill(has_clusters_calo[calogen], calo_pt[calo])
+                else:
+                    effplots["eff_pt_EB"][strategy].Fill(has_clusters_calo[calogen], calo_pt[calo])
                 effplots["eff2_eta_pt"][strategy].Fill(has_clusters_calo[calogen], calo_eta[calo], calo_pt[calo])
             else:
-                #print("Lost gen",strategy, g_eta)
                 effplots["eff_eta"][strategy].Fill(False, g_eta)
-                effplots["eff_pt"][strategy].Fill(False, gen_pt[ngen])
                 effplots["eff2_eta_pt"][strategy].Fill(False, g_eta, gen_pt[ngen])
+                #print("Lost gen",strategy, g_eta)
+                if abs(calo_eta[calo])< 1.492 and abs(calo_eta[calo]) > 1.442: continue
+                if abs(g_eta) > 1.5:
+                    effplots["eff_pt_EE"][strategy].Fill(False, gen_pt[ngen])
+                else:
+                    effplots["eff_pt_EB"][strategy].Fill(False, gen_pt[ngen])
+
+                
 
         if printout:
             print("\n>>>",iev, "|", strategy, "| Cluster-calo map\n" , cluster_calo_assoc)
