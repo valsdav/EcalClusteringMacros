@@ -292,6 +292,53 @@ def deltaR_strategy(xtal_cluster, xtal_calo, event, cluster_type="pfCluster", mi
     return cluster_calo_assoc, sorted_calo_cluster_assoc
 
 
+def sim_rechit_combined_fraction_strategy(xtal_cluster, xtal_calo, event,cluster_type="pfCluster", min_fraction=0.1):
+    calo_simE = event.caloParticle_simEnergy
+    cluster_energy = getattr(event, cluster_type+"_energy")
+    
+    cluster_calo_fraction = defaultdict(dict)
+    cluster_simenergy_fraction = defaultdict(dict)
+    for (ieta,iphi,clid, clhit), (caloinfo) in xtal_cluster.items():
+        for icalo, simhit in caloinfo.items():
+            if icalo not in cluster_calo_fraction[clid]:
+                cluster_calo_fraction[clid][icalo] = 0.
+                cluster_simenergy[clid][icalo] = 0.
+            cluster_calo_fraction[clid][icalo] += simhit / calo_simE[icalo]
+            cluster_simenergy_fraction[clid][icalo] += simhit/cluster_energy[clid]
+    
+    # Filter out calo with less than 5% fraction 
+    clean_cluster_calo_fraction = defaultdict(dict)
+    if min_fraction == 0: 
+        clean_cluster_calo_fraction = cluster_calo_fraction
+    else:
+        for clid, calos in cluster_calo_fraction.items():
+            for icalo, frac in cluster_simenergy_fraction[clid].items():
+                if frac > min_fraction:
+                    clean_cluster_calo_fraction[clid][icalo] = cluster_calo_fraction[clid][icalo]
+
+    
+    calo_cluster_assoc = defaultdict(list)
+    cluster_calo_assoc = {}
+
+    for clid, calofrac in clean_cluster_calo_fraction.items():
+        # order caloparticle by fraction
+        caloids =  list(sorted(calofrac.items(), key=itemgetter(1), reverse=True))
+        # Associate to che cluster the list of caloparticles ordered by fraction 
+        cluster_calo_assoc[clid] = caloids
+        # save for the calocluster in the caloparticle if it is the one with more fraction
+        # This is necessary in case one caloparticle is linked with more than one cluster
+        calo_cluster_assoc[caloids[0][0]].append((clid, caloids[0][1] ))
+        
+    # Now sort the clusters associated to a caloparticle with the fraction 
+    sorted_calo_cluster_assoc = {}
+    for caloid, clinfo in calo_cluster_assoc.items():
+        sorted_calo_cluster_assoc[caloid] = list(map(itemgetter(0), sorted(clinfo, key=itemgetter(1), reverse=True)))
+
+    # Return cluster:caloparticle and  caloparticle_cluster maps
+    return cluster_calo_assoc, sorted_calo_cluster_assoc
+
+
+
 ####################################################################################
 
 
@@ -304,6 +351,9 @@ strategies = {
     "sim_fraction_min1":  lambda xtal_cluster, xtal_calo, event, cluster_type: sim_fraction_stragegy(xtal_cluster, xtal_calo, event, cluster_type, min_fraction=0.01),
     #"sim_fraction_min3":  lambda xtal_cluster, xtal_calo, event, cluster_type: sim_fraction_stragegy(xtal_cluster, xtal_calo, event, cluster_type, min_fraction=0.03)
     #"sim_rechit_global_fraction": sim_rechit_global_fraction_strategy,
+    "sim_rechit_combined1": lambda xtal_cluster, xtal_calo, event, cluster_type: sim_rechit_combined_fraction_strategy(xtal_cluster, xtal_calo, event, cluster_type, min_fraction=0.1),
+    "sim_rechit_combined3": lambda xtal_cluster, xtal_calo, event, cluster_type: sim_rechit_combined_fraction_strategy(xtal_cluster, xtal_calo, event, cluster_type, min_fraction=0.3),
+    "sim_rechit_combined5": lambda xtal_cluster, xtal_calo, event, cluster_type: sim_rechit_combined_fraction_strategy(xtal_cluster, xtal_calo, event, cluster_type, min_fraction=0.5)
 }
 
 

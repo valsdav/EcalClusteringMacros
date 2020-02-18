@@ -32,6 +32,7 @@ log                     = log/strips.$(ClusterId).log
 transfer_input_files    = run_script.sh
 
 +JobFlavour             = "{queue}"
++AccountingGroup = "group_u_CMS.CAF.COMM"
 queue arguments from arguments.txt
 '''
 
