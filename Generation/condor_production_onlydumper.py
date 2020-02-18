@@ -15,6 +15,7 @@ parser = argparse.ArgumentParser()
 
 #parser.add_argument("-f", "--files", type=str, help="input file", required=True)
 parser.add_argument("-i", "--inputdir", type=str, help="Inputdir", required=True)
+parser.add_argument("--step3", type=str, help="Run step 3", required=True)
 parser.add_argument("-o", "--outputdir", type=str, help="Outputdir", required=True)
 parser.add_argument("-c", "--cmssw", type=str, help="CMSSW tar", required=True)
 parser.add_argument("-d", "---dumper", type=str, help="Dumper to run", required=True, default="RecoSimDumper")
@@ -59,8 +60,7 @@ cd RecoSimStudies/Dumpers/
 
 echo -e "cmsRun..";
 
-echo -e ">>> copy from STEP3";
-xrdcp --nopbar root://eos{eosinstance}.cern.ch/${INPUTFILE} step3.root;
+{step3}
 
 echo -e "Running dumper.."
 
@@ -72,6 +72,21 @@ xrdcp -f --nopbar  output_${JOBID}.root root://eos{eosinstance}.cern.ch/${OUTPUT
 
 echo -e "DONE";
 '''
+
+if args.step3 != None:
+    do_step3 = '''  
+    echo -e ">>> copy from STEP2";
+    xrdcp --nopbar root://eos{eosinstance}.cern.ch/${INPUTFILE} step2.root;
+    cmsRun python/step3_RAW2DIGI_L1Reco_RECO_RECOSIM_EI_Run3_2021.py
+    '''
+    script = script.replace("{step3}", do_step3)
+
+else:
+    copy_step3 = '''  
+    echo -e ">>> copy from STEP3";
+    xrdcp --nopbar root://eos{eosinstance}.cern.ch/${INPUTFILE} step3.root;
+    '''
+    script = script.replace("{step3}", copy_step3)
 
 script = script.replace("{eosinstance}", args.eos)
 script = script.replace("{user1}", user[:1])
