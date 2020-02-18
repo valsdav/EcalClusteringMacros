@@ -1,1 +1,0 @@
-python condor_production_overlap.py --energy 100. --eta 0.8 2.0 --energy2range 0.5 100 -n 5000 -o /eos/user/r/rdfexp/ecal/cluster/overlap_gen4 --delta 20 -c /afs/cern.ch/work/d/dvalsecc/private/CMSSW_10_6_0 -q tomorrow --repeat 6 --redo
