@@ -15,13 +15,13 @@ parser = argparse.ArgumentParser()
 
 #parser.add_argument("-f", "--files", type=str, help="input file", required=True)
 parser.add_argument("-i", "--inputdir", type=str, help="Inputdir", required=True)
-parser.add_argument("--step3", type=str, help="Run step 3", required=True)
 parser.add_argument("-o", "--outputdir", type=str, help="Outputdir", required=True)
 parser.add_argument("-c", "--cmssw", type=str, help="CMSSW tar", required=True)
 parser.add_argument("-d", "---dumper", type=str, help="Dumper to run", required=True, default="RecoSimDumper")
 parser.add_argument("-q", "--queue", type=str, help="Condor queue", default="longlunch", required=True)
 parser.add_argument("-e", "--eos", type=str, default="user", help="EOS instance user/cms", required=False)
 parser.add_argument("--redo", action="store_true", default=False, help="Redo all files")
+parser.add_argument("--do-step3", action="store_true", help="Run step 3",default=False)
 args = parser.parse_args()
 
 
@@ -73,7 +73,7 @@ xrdcp -f --nopbar  output_${JOBID}.root root://eos{eosinstance}.cern.ch/${OUTPUT
 echo -e "DONE";
 '''
 
-if args.step3 != None:
+if args.do_step3:
     do_step3 = '''  
     echo -e ">>> copy from STEP2";
     xrdcp --nopbar root://eos{eosinstance}.cern.ch/${INPUTFILE} step2.root;
