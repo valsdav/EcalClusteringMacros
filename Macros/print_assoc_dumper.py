@@ -37,7 +37,7 @@ debug = args.debug
 if args.batch: R.gROOT.SetBatch(True)
 
 f = R.TFile(args.inputfile);
-tree = f.Get("deepclusteringdumper/caloTree")
+tree = f.Get("recosimdumper/caloTree")
 pbar = tqdm(total=tree.GetEntries())
 
 
@@ -59,7 +59,7 @@ for iev, event in enumerate(tree):
     if not args.batch: pbar.update()
     if debug: print( '---', iev)
 
-    cl_assoc = getattr(event, "caloParticle_pfCluster_{}_MatchedIndex".format(args.strategy))
+    cl_assoc = getattr(event, "caloParticle_pfCluster_simScore_MatchedIndex")
    
     for calo, clusters in enumerate(cl_assoc):
         #print(calo, clusters)

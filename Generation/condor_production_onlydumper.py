@@ -77,7 +77,7 @@ if args.do_step3:
     do_step3 = '''  
     echo -e ">>> copy from STEP2";
     xrdcp --nopbar root://eos{eosinstance}.cern.ch/${INPUTFILE} step2.root;
-    cmsRun python/step3_RAW2DIGI_L1Reco_RECO_RECOSIM_EI_Run3_2021.py
+    cmsRun test/step3_RAW2DIGI_L1Reco_RECO_RECOSIM_EI_Run3_2021.py
     '''
     script = script.replace("{step3}", do_step3)
 
